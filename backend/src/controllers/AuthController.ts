@@ -2,9 +2,13 @@ import { Request, Response } from "express";
 import { AuthService } from "../services/AuthService";
 
 export class AuthController {
-  private authService = new AuthService();
+  // Implementar lazy loading para o AuthService
+  private getAuthService(): AuthService {
+    return new AuthService();
+  }
 
-  async login(req: Request, res: Response) {
+  // Usar arrow functions para preservar o contexto 'this'
+  login = async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
 
@@ -15,7 +19,8 @@ export class AuthController {
         });
       }
 
-      const result = await this.authService.login(email, password);
+      const authService = this.getAuthService();
+      const result = await authService.login(email, password);
 
       res.status(200).json({
         success: true,
@@ -41,7 +46,7 @@ export class AuthController {
     }
   }
 
-  async register(req: Request, res: Response) {
+  register = async (req: Request, res: Response) => {
     try {
       const { name, email, password, role } = req.body;
 
@@ -52,7 +57,8 @@ export class AuthController {
         });
       }
 
-      const result = await this.authService.register({
+      const authService = this.getAuthService();
+      const result = await authService.register({
         name,
         email,
         password,
@@ -76,7 +82,7 @@ export class AuthController {
     }
   }
 
-  async registerClient(req: Request, res: Response) {
+  registerClient = async (req: Request, res: Response) => {
     try {
       const { name, email, password, companyName, cnpj } = req.body;
 
@@ -87,7 +93,8 @@ export class AuthController {
         });
       }
 
-      const result = await this.authService.register({
+      const authService = this.getAuthService();
+      const result = await authService.register({
         name,
         email,
         password,
@@ -111,7 +118,7 @@ export class AuthController {
     }
   }
 
-  async registerCorrespondent(req: Request, res: Response) {
+  registerCorrespondent = async (req: Request, res: Response) => {
     try {
       const { name, email, password, oab, city, state, specialties } = req.body;
 
@@ -122,7 +129,8 @@ export class AuthController {
         });
       }
 
-      const result = await this.authService.register({
+      const authService = this.getAuthService();
+      const result = await authService.register({
         name,
         email,
         password,
@@ -146,7 +154,7 @@ export class AuthController {
     }
   }
 
-  async getProfile(req: Request, res: Response) {
+  getProfile = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id;
 
@@ -157,7 +165,8 @@ export class AuthController {
         });
       }
 
-      const user = await this.authService.getUserProfile(userId);
+      const authService = this.getAuthService();
+      const user = await authService.getUserProfile(userId);
 
       res.status(200).json({
         success: true,
@@ -176,7 +185,7 @@ export class AuthController {
     }
   }
 
-  async refreshToken(req: Request, res: Response) {
+  refreshToken = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id;
 
@@ -187,7 +196,8 @@ export class AuthController {
         });
       }
 
-      const result = await this.authService.refreshToken(userId);
+      const authService = this.getAuthService();
+      const result = await authService.refreshToken(userId);
 
       res.status(200).json({
         success: true,
@@ -207,7 +217,7 @@ export class AuthController {
     }
   }
 
-  async logout(req: Request, res: Response) {
+  logout = async (req: Request, res: Response) => {
     try {
       // Para logout, simplesmente retornamos sucesso
       // O frontend deve remover o token do localStorage
@@ -225,7 +235,7 @@ export class AuthController {
     }
   }
 
-  async health(req: Request, res: Response) {
+  health = async (req: Request, res: Response) => {
     try {
       res.status(200).json({
         status: "ok",

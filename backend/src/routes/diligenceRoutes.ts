@@ -17,14 +17,14 @@ router.post(
 router.get(
   "/client/my-diligences",
   checkRole(["client"]),
-  diligenceController.getDiligencesByClient // CORREÇÃO: Nome do método
+  diligenceController.getMyDiligences
 );
 
 // Rotas específicas para correspondentes
 router.get(
   "/correspondent/my-diligences",
   checkRole(["correspondent"]),
-  diligenceController.getDiligencesByCorrespondent // CORREÇÃO: Nome do método
+  diligenceController.getMyDiligences
 );
 router.get(
   "/available",
@@ -69,18 +69,14 @@ router.put(
 router.put(
   "/:id/status",
   checkRole(["admin", "client", "correspondent"]),
-  diligenceController.updateDiligenceStatus
-);
-router.put(
-  "/:id/revert-status",
-  checkRole(["admin"]),
-  diligenceController.revertDiligenceStatus
+  diligenceController.updateStatus
 );
 
 // Rota para histórico de status
 router.get(
   "/:id/history",
-  diligenceController.getDiligenceStatusHistory
+  diligenceController.getStatusHistory
 );
 
 export default router;
+

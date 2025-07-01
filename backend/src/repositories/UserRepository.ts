@@ -4,6 +4,10 @@ import { Repository } from "typeorm";
 
 export class UserRepository extends Repository<User> {
   constructor() {
+    // Verificar se o AppDataSource está inicializado antes de criar o repositório
+    if (!AppDataSource.isInitialized) {
+      throw new Error("AppDataSource não está inicializado. Certifique-se de que o banco de dados foi conectado.");
+    }
     super(User, AppDataSource.manager);
   }
 
@@ -40,4 +44,23 @@ export class UserRepository extends Repository<User> {
       },
     });
   }
+
+  // Método estático para verificar se o repositório pode ser usado
+  static canUseRepository(): boolean {
+    return AppDataSource.isInitialized;
+  }
+
+  // Método estático para obter o repositório de forma segura
+  static getSafeRepository(): UserRepository | null {
+    try {
+      if (AppDataSource.isInitialized) {
+        return new UserRepository();
+      }
+      return null;
+    } catch (error) {
+      console.error("Erro ao criar UserRepository:", error);
+      return null;
+    }
+  }
 }
+

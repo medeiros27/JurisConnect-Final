@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AppError } from "./errorHandler";
 import { UserRepository } from "../repositories/UserRepository";
+import { AppDataSource } from "../data-source";
 
 // Definir o tipo para a carga útil do token
 interface TokenPayload {
@@ -36,21 +37,50 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    throw new AppError("Token não fornecido", 401);
-  }
-
-  const [, token] = authHeader.split(" ");
-
   try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      throw new AppError("Token não fornecido", 401);
+    }
+
+    const [, token] = authHeader.split(" ");
+
+    if (!token) {
+      throw new AppError("Token não fornecido", 401);
+    }
+
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "jurisconnect_secret_key"
+      process.env.JWT_SECRET || "jurisconnect_secret_key_2024_super_secure_muito_longa_e_complexa"
     ) as TokenPayload;
 
-    const userRepository = new UserRepository();
+    // Verificar se o AppDataSource está inicializado
+    if (!UserRepository.canUseRepository()) {
+      console.warn("⚠️ AppDataSource não inicializado, usando validação básica do token");
+      
+      // Validação básica apenas com o token (para modo demo)
+      req.user = {
+        id: decoded.id,
+        role: decoded.role,
+      };
+      
+      return next();
+    }
+
+    // Validação completa com banco de dados
+    const userRepository = UserRepository.getSafeRepository();
+    
+    if (!userRepository) {
+      console.warn("⚠️ Não foi possível criar UserRepository, usando validação básica do token");
+      
+      req.user = {
+        id: decoded.id,
+        role: decoded.role,
+      };
+      
+      return next();
+    }
     const user = await userRepository.findOneBy({ id: decoded.id });
 
     if (!user) {
@@ -69,7 +99,18 @@ export const authMiddleware = async (
 
     return next();
   } catch (error) {
-    throw new AppError("Token inválido", 401);
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new AppError("Token inválido", 401);
+    }
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new AppError("Token expirado", 401);
+    }
+    if (error instanceof AppError) {
+      throw error;
+    }
+    
+    console.error("Erro no middleware de autenticação:", error);
+    throw new AppError("Erro interno de autenticação", 500);
   }
 };
 

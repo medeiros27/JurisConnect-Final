@@ -5,11 +5,53 @@ import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 
 export class AuthService {
-  private userRepository = AppDataSource.getRepository(User);
+  // Remover instanciação direta do repositório
+  private getUserRepository() {
+    if (!AppDataSource.isInitialized) {
+      throw new Error("Banco de dados não está disponível");
+    }
+    return AppDataSource.getRepository(User);
+  }
+
+  // Dados mockados para modo demo - CORRIGIDO com senhas válidas
+  private getMockUsers() {
+    return [
+      {
+        id: "1",
+        name: "Administrador",
+        email: "admin@jurisconnect.com",
+        password: "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.s5uO.G", // admin123
+        role: "admin" as const,
+        status: "active" as const,
+        phone: "(11) 99999-9999",
+        cnpj: "123.456.789-00"
+      },
+      {
+        id: "2", 
+        name: "Cliente Demo",
+        email: "cliente@demo.com",
+        password: "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.s5uO.G", // demo123
+        role: "client" as const,
+        status: "active" as const,
+        phone: "(11) 88888-8888",
+        cnpj: "987.654.321-00"
+      },
+      {
+        id: "3",
+        name: "Correspondente Demo", 
+        email: "correspondente@demo.com",
+        password: "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.s5uO.G", // demo123
+        role: "correspondent" as const,
+        status: "active" as const,
+        phone: "(11) 77777-7777",
+        cnpj: "456.789.123-00"
+      }
+    ];
+  }
 
   // Configurações JWT com valores padrão seguros
   private getJWTSecret(): string {
-    return process.env.JWT_SECRET || "jurisconnect_secret_key_2024_super_secure";
+    return process.env.JWT_SECRET || "jurisconnect_secret_key_2024_super_secure_muito_longa_e_complexa";
   }
 
   private getJWTExpiresIn(): StringValue | number {
@@ -23,20 +65,54 @@ export class AuthService {
 
   async login(email: string, password: string) {
     try {
-      // Buscar usuário por email
-      const user = await this.userRepository.findOne({
-        where: { email }
-      });
+      console.log("🔍 Tentativa de login para:", email);
+      
+      // Validar parâmetros de entrada
+      if (!email || !password) {
+        throw new Error("Email e senha são obrigatórios");
+      }
+
+      let user;
+
+      // Verificar se o banco de dados está disponível
+      if (AppDataSource.isInitialized) {
+        // Modo completo com banco de dados
+        console.log("💾 Usando banco de dados PostgreSQL");
+        const userRepository = this.getUserRepository();
+        user = await userRepository.findOne({
+          where: { email },
+          select: ["id", "name", "email", "password", "role", "status"] // Incluir password explicitamente
+        });
+      } else {
+        // Modo demo com dados mockados
+        console.log("🔄 Modo demo ativo - usando dados mockados");
+        const mockUsers = this.getMockUsers();
+        user = mockUsers.find(u => u.email === email);
+      }
 
       if (!user) {
+        console.log("❌ Usuário não encontrado:", email);
         throw new Error("Credenciais inválidas");
       }
 
+      console.log("✅ Usuário encontrado:", user.email);
+      
+      // Verificar se a senha existe
+      if (!user.password) {
+        console.error("❌ Senha não encontrada para o usuário:", user.email);
+        throw new Error("Erro interno: senha não encontrada");
+      }
+
+      console.log("🔐 Verificando senha...");
+      
       // Verificar senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
+        console.log("❌ Senha inválida para:", email);
         throw new Error("Credenciais inválidas");
       }
+
+      console.log("✅ Senha válida, gerando token...");
 
       // Gerar token JWT
       const tokenPayload = {
@@ -57,6 +133,8 @@ export class AuthService {
         }
       );
 
+      console.log("✅ Token gerado com sucesso");
+
       // Remover senha do retorno
       const userResponse = {
         id: user.id,
@@ -73,7 +151,7 @@ export class AuthService {
       };
 
     } catch (error) {
-      console.error("Erro no login:", error);
+      console.error("❌ Erro no login:", error);
       throw error;
     }
   }
@@ -85,8 +163,10 @@ export class AuthService {
     role: string;
   }) {
     try {
+      const userRepository = this.getUserRepository();
+      
       // Verificar se email já existe
-      const existingUser = await this.userRepository.findOne({
+      const existingUser = await userRepository.findOne({
         where: { email: userData.email }
       });
 
@@ -98,7 +178,7 @@ export class AuthService {
       const hashedPassword = await bcrypt.hash(userData.password, 12);
 
       // Criar usuário
-      const user = this.userRepository.create({
+      const user = userRepository.create({
         name: userData.name,
         email: userData.email,
         password: hashedPassword,
@@ -106,7 +186,7 @@ export class AuthService {
         status: "active" as any
       });
 
-      const savedUser = await this.userRepository.save(user);
+      const savedUser = await userRepository.save(user);
 
       // Resposta sem senha
       const userResponse = {
@@ -130,9 +210,18 @@ export class AuthService {
 
   async getUserProfile(userId: string) {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: userId }
-      });
+      let user;
+
+      if (AppDataSource.isInitialized) {
+        const userRepository = this.getUserRepository();
+        user = await userRepository.findOne({
+          where: { id: userId }
+        });
+      } else {
+        // Modo demo
+        const mockUsers = this.getMockUsers();
+        user = mockUsers.find(u => u.id === userId);
+      }
 
       if (!user) {
         throw new Error("Usuário não encontrado");

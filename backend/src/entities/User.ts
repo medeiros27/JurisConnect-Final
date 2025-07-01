@@ -36,7 +36,7 @@ export class User {
     length: 20,
     default: "pending",
   })
-  status!: "active" | "pending" | "inactive" | "suspended";
+  status!: "active" | "pending" | "inactive" | "suspended" | "rejected";
 
   @Column({ nullable: true })
   phone?: string;
@@ -101,3 +101,4 @@ export class User {
   @UpdateDateColumn()
   updatedAt!: Date;
 }
+

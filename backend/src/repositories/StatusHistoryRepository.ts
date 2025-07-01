@@ -4,6 +4,10 @@ import { Repository } from "typeorm";
 
 export class StatusHistoryRepository extends Repository<StatusHistory> {
   constructor() {
+    // Verificar se o AppDataSource está inicializado antes de criar o repositório
+    if (!AppDataSource.isInitialized) {
+      throw new Error("AppDataSource não está inicializado. Certifique-se de que o banco de dados foi conectado.");
+    }
     super(StatusHistory, AppDataSource.manager);
   }
 
@@ -42,4 +46,23 @@ export class StatusHistoryRepository extends Repository<StatusHistory> {
   async findAll(): Promise<StatusHistory[]> {
     return this.find();
   }
+
+  // Método estático para verificar se o repositório pode ser usado
+  static canUseRepository(): boolean {
+    return AppDataSource.isInitialized;
+  }
+
+  // Método estático para obter o repositório de forma segura
+  static getSafeRepository(): StatusHistoryRepository | null {
+    try {
+      if (AppDataSource.isInitialized) {
+        return new StatusHistoryRepository();
+      }
+      return null;
+    } catch (error) {
+      console.error("Erro ao criar StatusHistoryRepository:", error);
+      return null;
+    }
+  }
 }
+

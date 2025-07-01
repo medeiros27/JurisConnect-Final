@@ -1,10 +1,14 @@
 import { AppDataSource } from "../data-source";
 import { Diligence } from "../entities/Diligence";
-import { Repository, DeleteResult, UpdateResult } from "typeorm"; // Adicionado UpdateResult e DeleteResult
+import { Repository, DeleteResult, UpdateResult } from "typeorm";
 import { AppError } from "../middlewares/errorHandler";
 
 export class DiligenceRepository extends Repository<Diligence> {
   constructor() {
+    // Verificar se o AppDataSource está inicializado antes de criar o repositório
+    if (!AppDataSource.isInitialized) {
+      throw new Error("AppDataSource não está inicializado. Certifique-se de que o banco de dados foi conectado.");
+    }
     super(Diligence, AppDataSource.manager);
   }
 
@@ -78,4 +82,23 @@ export class DiligenceRepository extends Repository<Diligence> {
 
     return query.getMany();
   }
+
+  // Método estático para verificar se o repositório pode ser usado
+  static canUseRepository(): boolean {
+    return AppDataSource.isInitialized;
+  }
+
+  // Método estático para obter o repositório de forma segura
+  static getSafeRepository(): DiligenceRepository | null {
+    try {
+      if (AppDataSource.isInitialized) {
+        return new DiligenceRepository();
+      }
+      return null;
+    } catch (error) {
+      console.error("Erro ao criar DiligenceRepository:", error);
+      return null;
+    }
+  }
 }
+

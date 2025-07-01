@@ -1,24 +1,30 @@
 import { Request, Response } from "express";
 import { UserRepository } from "../repositories/UserRepository";
 import { AppError } from "../middlewares/errorHandler";
-import { User } from "../entities/User"; // Importe a entidade User
-import { IAuthRequest } from "../middlewares/authMiddleware"; // Importe a interface IAuthRequest
+import { User } from "../entities/User";
+import { IAuthRequest } from "../middlewares/authMiddleware";
 
 export class UserController {
-  private userRepository: UserRepository;
-
-  constructor() {
-    this.userRepository = new UserRepository();
+  // Remover a instanciação no construtor
+  private getUserRepository(): UserRepository {
+    // Usar o método seguro para obter o repositório
+    const repository = UserRepository.getSafeRepository();
+    if (!repository) {
+      throw new AppError("Banco de dados não disponível", 500);
+    }
+    return repository;
   }
 
   getAllUsers = async (req: Request, res: Response): Promise<Response> => {
-    const users = await this.userRepository.find(); // Alterado de findAll() para find()
+    const userRepository = this.getUserRepository();
+    const users = await userRepository.find();
     return res.json(users);
   };
 
   getUserById = async (req: Request, res: Response): Promise<Response> => {
     const { id } = req.params;
-    const user = await this.userRepository.findOneBy({ id }); // Alterado de findById(id) para findOneBy({ id })
+    const userRepository = this.getUserRepository();
+    const user = await userRepository.findOneBy({ id });
 
     if (!user) {
       throw new AppError("Usuário não encontrado", 404);
@@ -28,107 +34,140 @@ export class UserController {
   };
 
   createUser = async (req: Request, res: Response): Promise<Response> => {
-    const { name, email, password, role } = req.body;
-
-    if (!name || !email || !password || !role) {
-      throw new AppError("Dados obrigatórios não fornecidos", 400);
-    }
-
-    const existingUser = await this.userRepository.findOneBy({ email }); // Alterado de findByEmail(email) para findOneBy({ email })
+    const { name, email, password, role, phone, cnpj, state, city } = req.body;
+    
+    const userRepository = this.getUserRepository();
+    
+    // Verificar se o usuário já existe
+    const existingUser = await userRepository.findOne({ where: { email } });
     if (existingUser) {
-      throw new AppError("Email já registrado", 409);
+      throw new AppError("Email já está em uso", 400);
     }
 
-    const user = this.userRepository.create({ name, email, password, role });
-    await this.userRepository.save(user);
+    // Criar novo usuário
+    const user = userRepository.create({
+      name,
+      email,
+      password, // A senha deve ser hasheada no service ou antes de salvar
+      role,
+      phone,
+      cnpj,
+      state,
+      city,
+      status: role === "correspondent" ? "pending" : "active"
+    });
 
-    return res.status(201).json(user);
+    await userRepository.save(user);
+
+    // Remover senha da resposta
+    const { password: _, ...userWithoutPassword } = user;
+    return res.status(201).json(userWithoutPassword);
   };
 
   updateUser = async (req: Request, res: Response): Promise<Response> => {
     const { id } = req.params;
-    const { name, email, role, status, phone, oab, city, state, companyName, cnpj, address, verified, specialties, coverage, rating, totalDiligences, completionRate, responseTime } = req.body;
-
-    const user = await this.userRepository.findOneBy({ id }); // Alterado de findById(id) para findOneBy({ id })
-
+    const updateData = req.body;
+    
+    const userRepository = this.getUserRepository();
+    
+    const user = await userRepository.findOneBy({ id });
     if (!user) {
       throw new AppError("Usuário não encontrado", 404);
     }
 
-    // Atualiza as propriedades do usuário
-    this.userRepository.merge(user, { name, email, role, status, phone, oab, city, state, companyName, cnpj, address, verified, specialties, coverage, rating, totalDiligences, completionRate, responseTime });
-    await this.userRepository.save(user);
+    // Atualizar dados do usuário
+    Object.assign(user, updateData);
+    await userRepository.save(user);
 
-    return res.json(user);
+    // Remover senha da resposta
+    const { password: _, ...userWithoutPassword } = user;
+    return res.json(userWithoutPassword);
   };
 
   deleteUser = async (req: Request, res: Response): Promise<Response> => {
     const { id } = req.params;
-    const user = await this.userRepository.findOneBy({ id }); // Alterado de findById(id) para findOneBy({ id })
-
+    
+    const userRepository = this.getUserRepository();
+    
+    const user = await userRepository.findOneBy({ id });
     if (!user) {
       throw new AppError("Usuário não encontrado", 404);
     }
 
-    await this.userRepository.remove(user); // Use remove() para deletar a entidade
-
+    await userRepository.remove(user);
     return res.status(204).send();
   };
 
-  // Métodos específicos para perfil do usuário logado
-  getProfile = async (req: Request, res: Response): Promise<Response> => {
-    const authRequest = req as IAuthRequest;
-    if (!authRequest.user || !authRequest.user.id) {
+  getProfile = async (req: IAuthRequest, res: Response): Promise<Response> => {
+    const userId = req.user?.id;
+    
+    if (!userId) {
       throw new AppError("Usuário não autenticado", 401);
     }
 
-    const userId = authRequest.user.id;
-    const user = await this.userRepository.findOneBy({ id: userId });
+    const userRepository = this.getUserRepository();
+    const user = await userRepository.findOneBy({ id: userId });
 
     if (!user) {
       throw new AppError("Usuário não encontrado", 404);
     }
 
-    return res.json(user);
+    // Remover senha da resposta
+    const { password: _, ...userWithoutPassword } = user;
+    return res.json(userWithoutPassword);
   };
 
-  updateProfile = async (req: Request, res: Response): Promise<Response> => {
-    const authRequest = req as IAuthRequest;
-    if (!authRequest.user || !authRequest.user.id) {
+  updateProfile = async (req: IAuthRequest, res: Response): Promise<Response> => {
+    const userId = req.user?.id;
+    const { name, phone, state, city } = req.body;
+
+    if (!userId) {
       throw new AppError("Usuário não autenticado", 401);
     }
 
-    const userId = authRequest.user.id;
-    const { name, phone, city, state, address, specialties, coverage, companyName, cnpj, oab } = req.body;
-
-    const user = await this.userRepository.findOneBy({ id: userId });
+    const userRepository = this.getUserRepository();
+    const user = await userRepository.findOneBy({ id: userId });
 
     if (!user) {
       throw new AppError("Usuário não encontrado", 404);
     }
 
-    // Atualiza as propriedades do usuário
-    this.userRepository.merge(user, { name, phone, city, state, address, specialties, coverage, companyName, cnpj, oab });
-    await this.userRepository.save(user);
+    // Atualizar apenas campos permitidos
+    user.name = name || user.name;
+    user.phone = phone || user.phone;
+    user.state = state || user.state;
+    user.city = city || user.city;
 
-    return res.json(user);
+    await userRepository.save(user);
+
+    // Remover senha da resposta
+    const { password: _, ...userWithoutPassword } = user;
+    return res.json(userWithoutPassword);
   };
 
-  // Métodos específicos para correspondentes
   getCorrespondents = async (req: Request, res: Response): Promise<Response> => {
     const { state, city } = req.query;
-    const correspondents = await this.userRepository.findCorrespondents(state as string, city as string); // Mantém o método personalizado
+    
+    const userRepository = this.getUserRepository();
+    const correspondents = await userRepository.findCorrespondents(
+      state as string,
+      city as string
+    );
+
     return res.json(correspondents);
   };
 
   getPendingCorrespondents = async (req: Request, res: Response): Promise<Response> => {
-    const pendingCorrespondents = await this.userRepository.findPendingCorrespondents(); // Mantém o método personalizado
+    const userRepository = this.getUserRepository();
+    const pendingCorrespondents = await userRepository.findPendingCorrespondents();
     return res.json(pendingCorrespondents);
   };
 
   approveCorrespondent = async (req: Request, res: Response): Promise<Response> => {
     const { id } = req.params;
-    const correspondent = await this.userRepository.findOneBy({ id }); // Alterado de findById(id) para findOneBy({ id })
+    
+    const userRepository = this.getUserRepository();
+    const correspondent = await userRepository.findOneBy({ id });
 
     if (!correspondent) {
       throw new AppError("Correspondente não encontrado", 404);
@@ -139,14 +178,16 @@ export class UserController {
     }
 
     correspondent.status = "active";
-    await this.userRepository.save(correspondent);
+    await userRepository.save(correspondent);
 
-    return res.json(correspondent);
+    return res.json({ message: "Correspondente aprovado com sucesso" });
   };
 
   rejectCorrespondent = async (req: Request, res: Response): Promise<Response> => {
     const { id } = req.params;
-    const correspondent = await this.userRepository.findOneBy({ id }); // Alterado de findById(id) para findOneBy({ id })
+    
+    const userRepository = this.getUserRepository();
+    const correspondent = await userRepository.findOneBy({ id });
 
     if (!correspondent) {
       throw new AppError("Correspondente não encontrado", 404);
@@ -156,8 +197,10 @@ export class UserController {
       throw new AppError("Usuário não é um correspondente", 400);
     }
 
-    await this.userRepository.remove(correspondent); // Use remove() para deletar a entidade
+    correspondent.status = "rejected";
+    await userRepository.save(correspondent);
 
-    return res.status(204).send();
+    return res.json({ message: "Correspondente rejeitado" });
   };
 }
+
