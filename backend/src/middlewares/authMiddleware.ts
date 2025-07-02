@@ -1,130 +1,78 @@
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { AppError } from "./errorHandler";
-import { UserRepository } from "../repositories/UserRepository";
-import { AppDataSource } from "../data-source";
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { AppDataSource } from '../data-source';
+import { User } from '../entities/User';
 
-// Definir o tipo para a carga útil do token
-interface TokenPayload {
-  id: string;
-  role: 'admin' | 'client' | 'correspondent';
-  iat: number;
-  exp: number;
+// Interface para o payload do JWT
+// CORREÇÃO: A chave no token é 'id', não 'userId'
+interface JwtPayload {
+  id: string; // Alterado de userId para id
+  email: string;
+  role?: string;
 }
 
-// Definir um tipo personalizado para o usuário autenticado
-export interface AuthUser {
-  id: string;
-  role: 'admin' | 'client' | 'correspondent';
-}
-
-// Estender o namespace Express para adicionar a propriedade user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthUser;
-    }
-  }
-}
-
-// Interface para requisições autenticadas (para compatibilidade)
+// Exporta a interface para a requisição autenticada.
 export interface IAuthRequest extends Request {
-  user?: AuthUser;
+  user?: User;
 }
 
-export const authMiddleware = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const JWT_SECRET = process.env.JWT_SECRET || 'sua-chave-secreta-super-segura';
+
+// Middleware de autenticação principal
+export const authMiddleware = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-      throw new AppError("Token não fornecido", 401);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ message: 'Acesso negado. Token não fornecido ou malformatado.' });
+      return;
     }
 
-    const [, token] = authHeader.split(" ");
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
 
-    if (!token) {
-      throw new AppError("Token não fornecido", 401);
+    // CORREÇÃO: Verificar 'decoded.id' em vez de 'decoded.userId'
+    if (!decoded.id) {
+      res.status(401).json({ message: 'Token inválido: ID do usuário ausente no payload.' });
+      return;
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "jurisconnect_secret_key_2024_super_secure_muito_longa_e_complexa"
-    ) as TokenPayload;
-
-    // Verificar se o AppDataSource está inicializado
-    if (!UserRepository.canUseRepository()) {
-      console.warn("⚠️ AppDataSource não inicializado, usando validação básica do token");
-      
-      // Validação básica apenas com o token (para modo demo)
-      req.user = {
-        id: decoded.id,
-        role: decoded.role,
-      };
-      
-      return next();
-    }
-
-    // Validação completa com banco de dados
-    const userRepository = UserRepository.getSafeRepository();
-    
-    if (!userRepository) {
-      console.warn("⚠️ Não foi possível criar UserRepository, usando validação básica do token");
-      
-      req.user = {
-        id: decoded.id,
-        role: decoded.role,
-      };
-      
-      return next();
-    }
+    // CORREÇÃO: Usar 'decoded.id' para buscar o usuário
+    const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOneBy({ id: decoded.id });
 
     if (!user) {
-      throw new AppError("Usuário não encontrado", 401);
-    }
-
-    if (user.status !== "active") {
-      throw new AppError("Usuário inativo ou pendente", 401);
-    }
-
-    // Adicionar informações do usuário à requisição
-    req.user = {
-      id: user.id,
-      role: user.role as 'admin' | 'client' | 'correspondent',
-    };
-
-    return next();
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      throw new AppError("Token inválido", 401);
-    }
-    if (error instanceof jwt.TokenExpiredError) {
-      throw new AppError("Token expirado", 401);
-    }
-    if (error instanceof AppError) {
-      throw error;
+      res.status(401).json({ message: 'Usuário do token não encontrado no banco de dados.' });
+      return;
     }
     
-    console.error("Erro no middleware de autenticação:", error);
-    throw new AppError("Erro interno de autenticação", 500);
+    if (user.status !== 'active') {
+        res.status(401).json({ message: 'Sua conta foi desativada.' });
+        return;
+    }
+
+    req.user = user;
+    next();
+
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+        console.error(`[Auth] Erro de Token JWT: ${error.message}`, { name: error.name });
+        res.status(401).json({ message: `Token inválido: ${error.message}` });
+        return;
+    }
+    console.error('[Auth] Erro inesperado no middleware:', error);
+    res.status(500).json({ message: 'Erro interno no servidor de autenticação.' });
   }
 };
 
-export const checkRole = (roles: Array<'admin' | 'client' | 'correspondent'>) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      throw new AppError("Não autorizado", 401);
-    }
+// Middleware para verificar roles (cargos)
+export const checkRole = (allowedRoles: string[]) => {
+  return (req: IAuthRequest, res: Response, next: NextFunction) => {
+    const userRole = req.user?.role;
 
-    if (!roles.includes(req.user.role)) {
-      throw new AppError("Permissão negada", 403);
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      res.status(403).json({ message: 'Acesso negado. Permissões insuficientes.' });
+      return;
     }
-
-    return next();
+    next();
   };
 };
-

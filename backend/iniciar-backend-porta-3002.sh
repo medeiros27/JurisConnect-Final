@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Iniciando JurisConnect Backend na porta 3000..."
+echo "🚀 Iniciando JurisConnect Backend na porta 3002..."
 echo "📍 Diretório atual: $(pwd)"
 
 # Verificar se estamos no diretório correto
@@ -16,8 +16,8 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# Definir a porta como 3000
-export PORT=3000
+# Definir a porta como 3002
+export PORT=3002
 
 echo "🔧 Configurações:"
 echo "   - Porta: $PORT"
@@ -42,8 +42,8 @@ echo "   👤 Admin: admin@jurisconnect.com / admin123"
 echo "   👤 Cliente: cliente@exemplo.com / cliente123"
 echo "   👤 Correspondente: correspondente@exemplo.com / corresp123"
 echo ""
-echo "🌐 Servidor rodando em: http://localhost:3000"
-echo "🔗 API disponível em: http://localhost:3000/api"
+echo "🌐 Servidor rodando em: http://localhost:3002"
+echo "🔗 API disponível em: http://localhost:3002/api"
 echo ""
 echo "⏹️  Para parar o servidor, pressione Ctrl+C"
 echo ""

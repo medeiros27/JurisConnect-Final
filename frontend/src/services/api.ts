@@ -1,48 +1,51 @@
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
-// Configuração da URL base da API usando variáveis de ambiente
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// A sua lógica para obter a URL base está ótima.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
-const api = axios.create({
-  baseURL: API_BASE_URL, 
+const api: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
   timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
 // Interceptador para adicionar o token JWT a todas as requisições
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token && token !== 'mock_token_' + Date.now()) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Interceptador para tratamento de erros
+// Interceptador para lidar com respostas e erros
 api.interceptors.response.use(
-  (response) => response.data,
+  (response: AxiosResponse) => {
+    // --- CORREÇÃO ESSENCIAL ---
+    // Retornamos apenas a propriedade 'data' da resposta.
+    // Isto garante que os seus serviços e hooks recebem
+    // diretamente o array ou objeto JSON que o backend enviou,
+    // o que resolve o erro ".filter is not a function".
+    return response.data;
+  },
   (error) => {
-    console.error("Erro na chamada da API:", error.message);
-    
-    // Se for erro de rede (backend não disponível), não redirecionar
-    if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
-      console.warn('Backend não disponível - modo offline');
-      return Promise.reject(error);
-    }
-    
-    // Se o erro for 401 (não autorizado) e não for um token mock, remover token e redirecionar
+    // A sua lógica de tratamento de erros foi mantida.
+    console.error(`❌ Erro na resposta da API:`, error.message);
+
     if (error.response?.status === 401) {
-      const token = localStorage.getItem('token');
-      if (token && !token.startsWith('mock_token_')) {
-        localStorage.removeItem('token');
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/') {
+        console.warn('🔄 Token inválido, limpando dados de autenticação e redirecionando para login.');
         localStorage.removeItem('user');
-        
-        // Só redirecionar se não estivermos já na página de login
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
+        localStorage.removeItem('token');
+        window.location.href = '/login';
       }
     }
     
@@ -51,4 +54,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-

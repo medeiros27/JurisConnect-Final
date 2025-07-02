@@ -23,17 +23,25 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Verificar se há um usuário salvo no localStorage
   useEffect(() => {
-    // Verificar se há um usuário salvo no localStorage
     const checkAuthStatus = () => {
       try {
         const savedUser = localStorage.getItem('user');
         const savedToken = localStorage.getItem('token');
-        
+
         if (savedUser && savedToken) {
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
+          setIsAuthenticated(true);
+          console.log('✅ Usuário autenticado encontrado:', parsedUser.email);
+        } else {
+          console.log('❌ Nenhum usuário autenticado encontrado');
+          // Limpar dados corrompidos
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
         }
       } catch (error) {
         console.error('Erro ao verificar status de autenticação:', error);
@@ -49,24 +57,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    
     try {
-      const response = await AuthService.login({ email, password });
-      
+      setIsLoading(true);
+      console.log('🔄 Iniciando processo de login para:', email);
+
+      const response = await AuthService.getInstance().login(email, password);
+      console.log('✅ Login bem-sucedido, dados recebidos:', response);
+
       // Salvar usuário e token no localStorage
       setUser(response.user);
       localStorage.setItem('user', JSON.stringify(response.user));
       localStorage.setItem('token', response.token);
-      
+      setIsAuthenticated(true);
+
+      console.log('✅ Dados salvos no localStorage');
+      console.log('✅ Estado de autenticação atualizado');
+
+      // Forçar uma atualização da página para garantir que todos os componentes sejam re-renderizados
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+
     } catch (error: any) {
-      console.error('Erro no login:', error);
+      console.error('❌ Erro no login:', error);
       
       // Se o backend não estiver disponível, usar dados mockados temporariamente
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
-        console.warn('Backend não disponível, usando dados mockados');
+        console.warn('🔄 Backend não disponível, usando dados mockados');
         
-        // Mock user data baseado no email para desenvolvimento
         let mockUser: User;
         
         if (email === 'admin@jurisconnect.com') {
@@ -85,27 +103,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: 'cliente@exemplo.com',
             role: 'client',
             status: 'active',
-            createdAt: '2024-01-15T00:00:00Z',
-            phone: '(11) 99999-9999'
+            createdAt: '2024-01-01T00:00:00Z'
           };
-        } else {
+        } else if (email === 'correspondente@exemplo.com') {
           mockUser = {
             id: '3',
             name: 'Maria Santos',
             email: 'correspondente@exemplo.com',
             role: 'correspondent',
             status: 'active',
-            createdAt: '2024-01-20T00:00:00Z',
-            phone: '(11) 88888-8888',
-            oab: 'SP123456',
-            city: 'São Paulo',
-            state: 'SP'
+            createdAt: '2024-01-01T00:00:00Z'
           };
+        } else {
+          throw new Error('Credenciais inválidas');
         }
-        
+
         setUser(mockUser);
         localStorage.setItem('user', JSON.stringify(mockUser));
         localStorage.setItem('token', 'mock_token_' + Date.now());
+        setIsAuthenticated(true);
+
+        console.log('✅ Login mockado bem-sucedido para:', mockUser.email);
+        
+        // Forçar uma atualização da página
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
       } else {
         throw error;
       }
@@ -115,21 +138,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    console.log('🔄 Fazendo logout...');
     setUser(null);
+    setIsAuthenticated(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    console.log('✅ Logout realizado com sucesso');
+    
+    // Redirecionar para a página de login
+    window.location.href = '/login';
   };
 
-  const isAuthenticated = !!user;
+  const value = {
+    user,
+    login,
+    logout,
+    isLoading,
+    isAuthenticated
+  };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      isLoading, 
-      isAuthenticated 
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

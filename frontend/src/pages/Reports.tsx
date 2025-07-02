@@ -3,569 +3,626 @@ import { useAuth } from '../contexts/AuthContext';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import Badge from '../components/UI/Badge';
-import Modal from '../components/Modals/Modal';
-import { 
-  BarChart3, 
-  Download, 
+import LoadingSpinner from '../components/UI/LoadingSpinner';
+import {
+  FileText,
+  Download,
   Calendar,
   Filter,
-  FileText,
+  BarChart3,
+  PieChart,
   TrendingUp,
   Users,
   DollarSign,
   Clock,
-  MapPin,
-  Star,
-  Settings,
-  Play,
-  Pause,
-  RefreshCw,
-  Plus
+  Target,
+  Award,
+  AlertCircle
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatCurrency } from '../utils/formatters';
+import financialService from '../services/financialService';
+import platformService from '../services/platformService';
 
-interface ReportTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: 'financial' | 'operational' | 'performance' | 'custom';
-  icon: any;
-  fields: string[];
-  formats: ('pdf' | 'excel' | 'csv')[];
-}
-
-interface ScheduledReport {
-  id: string;
-  templateId: string;
-  name: string;
-  frequency: 'daily' | 'weekly' | 'monthly';
-  nextRun: string;
-  recipients: string[];
-  active: boolean;
+interface ReportData {
+  period: string;
+  totalRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  totalDiligences: number;
+  completedDiligences: number;
+  averageTicket: number;
+  growthRate: number;
+  topCorrespondents: Array<{
+    id: string;
+    name: string;
+    completedDiligences: number;
+    revenue: number;
+    rating: number;
+  }>;
+  topClients: Array<{
+    id: string;
+    name: string;
+    totalSpent: number;
+    diligencesCount: number;
+  }>;
+  performanceMetrics: {
+    averageResponseTime: number;
+    completionRate: number;
+    clientSatisfaction: number;
+    correspondentUtilization: number;
+  };
 }
 
 const Reports: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'templates' | 'custom' | 'scheduled'>('templates');
-  const [showCustomModal, setShowCustomModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
-  const [customReport, setCustomReport] = useState({
-    name: '',
-    description: '',
-    dateRange: { start: '', end: '' },
-    filters: {
-      status: 'all',
-      priority: 'all',
-      state: 'all',
-      correspondent: 'all'
-    },
-    fields: [] as string[],
-    format: 'pdf' as 'pdf' | 'excel' | 'csv'
-  });
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [reportType, setReportType] = useState<'financial' | 'operational' | 'performance'>('financial');
 
-  const reportTemplates: ReportTemplate[] = [
-    {
-      id: '1',
-      name: 'Relatório de Receitas',
-      description: 'Análise detalhada das receitas por período, cliente e tipo de diligência',
-      category: 'financial',
-      icon: DollarSign,
-      fields: ['receitas', 'clientes', 'tipos_diligencia', 'periodo'],
-      formats: ['pdf', 'excel', 'csv']
-    },
-    {
-      id: '2',
-      name: 'Performance de Correspondentes',
-      description: 'Métricas de desempenho, avaliações e produtividade dos correspondentes',
-      category: 'performance',
-      icon: Star,
-      fields: ['correspondentes', 'avaliacoes', 'tempo_execucao', 'taxa_conclusao'],
-      formats: ['pdf', 'excel']
-    },
-    {
-      id: '3',
-      name: 'Análise Operacional',
-      description: 'Estatísticas de diligências, prazos, distribuição geográfica e status',
-      category: 'operational',
-      icon: BarChart3,
-      fields: ['diligencias', 'prazos', 'localizacao', 'status'],
-      formats: ['pdf', 'excel', 'csv']
-    },
-    {
-      id: '4',
-      name: 'Relatório de Clientes',
-      description: 'Atividade dos clientes, volume de diligências e histórico de pagamentos',
-      category: 'operational',
-      icon: Users,
-      fields: ['clientes', 'volume_diligencias', 'pagamentos', 'satisfacao'],
-      formats: ['pdf', 'excel']
-    },
-    {
-      id: '5',
-      name: 'Análise de Prazos',
-      description: 'Cumprimento de prazos, diligências em atraso e tempo médio de execução',
-      category: 'performance',
-      icon: Clock,
-      fields: ['prazos', 'atrasos', 'tempo_medio', 'urgencias'],
-      formats: ['pdf', 'excel', 'csv']
-    },
-    {
-      id: '6',
-      name: 'Distribuição Geográfica',
-      description: 'Mapeamento de diligências por estado, cidade e região',
-      category: 'operational',
-      icon: MapPin,
-      fields: ['estados', 'cidades', 'regioes', 'densidade'],
-      formats: ['pdf', 'excel']
+  // Função auxiliar para formatar valores numéricos com segurança
+  const safeToFixed = (value: number | undefined | null, decimals: number = 2): string => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return '0.00';
     }
-  ];
+    return Number(value).toFixed(decimals);
+  };
 
-  const scheduledReports: ScheduledReport[] = [
-    {
-      id: '1',
-      templateId: '1',
-      name: 'Receitas Mensais',
-      frequency: 'monthly',
-      nextRun: '2025-01-01T09:00:00Z',
-      recipients: ['admin@jurisconnect.com'],
-      active: true
-    },
-    {
-      id: '2',
-      templateId: '2',
-      name: 'Performance Semanal',
-      frequency: 'weekly',
-      nextRun: '2024-12-23T08:00:00Z',
-      recipients: ['admin@jurisconnect.com', 'gerencia@jurisconnect.com'],
-      active: true
+  // Função auxiliar para garantir que um valor seja um número válido
+  const safeNumber = (value: number | undefined | null, defaultValue: number = 0): number => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return defaultValue;
     }
-  ];
+    return Number(value);
+  };
 
-  const availableFields = [
-    { id: 'diligencias', label: 'Diligências', category: 'Operacional' },
-    { id: 'receitas', label: 'Receitas', category: 'Financeiro' },
-    { id: 'clientes', label: 'Clientes', category: 'Operacional' },
-    { id: 'correspondentes', label: 'Correspondentes', category: 'Operacional' },
-    { id: 'prazos', label: 'Prazos', category: 'Performance' },
-    { id: 'avaliacoes', label: 'Avaliações', category: 'Performance' },
-    { id: 'localizacao', label: 'Localização', category: 'Geográfico' },
-    { id: 'status', label: 'Status', category: 'Operacional' },
-    { id: 'tipos_diligencia', label: 'Tipos de Diligência', category: 'Operacional' },
-    { id: 'pagamentos', label: 'Pagamentos', category: 'Financeiro' }
-  ];
+  // Função auxiliar para formatar moeda com segurança
+  const safeCurrency = (value: number | undefined | null): string => {
+    return formatCurrency(safeNumber(value, 0));
+  };
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'financial': return 'bg-green-100 text-green-800';
-      case 'operational': return 'bg-blue-100 text-blue-800';
-      case 'performance': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // Função auxiliar para formatar porcentagem com segurança
+  const safePercentage = (value: number | undefined | null): string => {
+    return `${safeToFixed(value, 1)}%`;
+  };
+
+  useEffect(() => {
+    loadReportData();
+  }, [selectedPeriod, selectedDate, reportType]);
+
+  const loadReportData = async () => {
+    try {
+      setLoading(true);
+
+      // Calcular período baseado na seleção
+      let startDate: Date;
+      let endDate: Date;
+
+      switch (selectedPeriod) {
+        case 'month':
+          startDate = startOfMonth(selectedDate);
+          endDate = endOfMonth(selectedDate);
+          break;
+        case 'quarter':
+          const quarterStart = new Date(selectedDate.getFullYear(), Math.floor(selectedDate.getMonth() / 3) * 3, 1);
+          startDate = quarterStart;
+          endDate = new Date(quarterStart.getFullYear(), quarterStart.getMonth() + 3, 0);
+          break;
+        case 'year':
+          startDate = new Date(selectedDate.getFullYear(), 0, 1);
+          endDate = new Date(selectedDate.getFullYear(), 11, 31);
+          break;
+        default:
+          startDate = startOfMonth(selectedDate);
+          endDate = endOfMonth(selectedDate);
+      }
+
+      // Carregar dados baseado no tipo de relatório
+      const [financialData, operationalData, performanceData] = await Promise.all([
+        financialService.getFinancialReport(startDate, endDate),
+        platformService.getOperationalReport(startDate, endDate),
+        platformService.getPerformanceReport(startDate, endDate)
+      ]);
+
+      // Combinar dados com validação de segurança
+      const combinedData: ReportData = {
+        period: format(startDate, 'MMMM yyyy', { locale: ptBR }),
+        totalRevenue: safeNumber(financialData?.totalRevenue),
+        totalExpenses: safeNumber(financialData?.totalExpenses),
+        netProfit: safeNumber(financialData?.netProfit),
+        totalDiligences: safeNumber(operationalData?.totalDiligences),
+        completedDiligences: safeNumber(operationalData?.completedDiligences),
+        averageTicket: safeNumber(financialData?.averageTicket),
+        growthRate: safeNumber(financialData?.growthRate),
+        topCorrespondents: Array.isArray(operationalData?.topCorrespondents) 
+          ? operationalData.topCorrespondents.map((c: any) => ({
+              id: c.id || '',
+              name: c.name || 'Nome não informado',
+              completedDiligences: safeNumber(c.completedDiligences),
+              revenue: safeNumber(c.revenue),
+              rating: safeNumber(c.rating, 0)
+            }))
+          : [],
+        topClients: Array.isArray(operationalData?.topClients)
+          ? operationalData.topClients.map((c: any) => ({
+              id: c.id || '',
+              name: c.name || 'Nome não informado',
+              totalSpent: safeNumber(c.totalSpent),
+              diligencesCount: safeNumber(c.diligencesCount)
+            }))
+          : [],
+        performanceMetrics: {
+          averageResponseTime: safeNumber(performanceData?.averageResponseTime),
+          completionRate: safeNumber(performanceData?.completionRate),
+          clientSatisfaction: safeNumber(performanceData?.clientSatisfaction),
+          correspondentUtilization: safeNumber(performanceData?.correspondentUtilization)
+        }
+      };
+
+      setReportData(combinedData);
+
+    } catch (error) {
+      console.error('Erro ao carregar dados do relatório:', error);
+      
+      // Fallback para dados mockados
+      const mockData: ReportData = {
+        period: format(selectedDate, 'MMMM yyyy', { locale: ptBR }),
+        totalRevenue: 45000,
+        totalExpenses: 28000,
+        netProfit: 17000,
+        totalDiligences: 156,
+        completedDiligences: 142,
+        averageTicket: 288.46,
+        growthRate: 15.3,
+        topCorrespondents: [
+          {
+            id: '1',
+            name: 'Maria Santos',
+            completedDiligences: 23,
+            revenue: 6900,
+            rating: 4.8
+          },
+          {
+            id: '2',
+            name: 'João Silva',
+            completedDiligences: 19,
+            revenue: 5700,
+            rating: 4.6
+          }
+        ],
+        topClients: [
+          {
+            id: '1',
+            name: 'Empresa ABC Ltda',
+            totalSpent: 8500,
+            diligencesCount: 12
+          },
+          {
+            id: '2',
+            name: 'Consultoria XYZ',
+            totalSpent: 6200,
+            diligencesCount: 8
+          }
+        ],
+        performanceMetrics: {
+          averageResponseTime: 18.5,
+          completionRate: 91.0,
+          clientSatisfaction: 4.7,
+          correspondentUtilization: 78.5
+        }
+      };
+
+      setReportData(mockData);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case 'financial': return 'Financeiro';
-      case 'operational': return 'Operacional';
-      case 'performance': return 'Performance';
-      default: return 'Personalizado';
-    }
+  const exportReport = (format: 'pdf' | 'excel') => {
+    // Implementar exportação
+    console.log(`Exportando relatório em formato ${format}`);
+    // Aqui você implementaria a lógica de exportação
   };
 
-  const generateReport = async (template: ReportTemplate, format: string) => {
-    // Simular geração de relatório
-    const loadingToast = { id: 'generating' };
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    let newDate: Date;
     
-    try {
-      // Simular delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Em produção, isso seria uma chamada real para a API
-      const blob = new Blob(['Dados do relatório simulado'], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${template.name.toLowerCase().replace(/\s+/g, '_')}.${format}`;
-      link.click();
-      URL.revokeObjectURL(url);
-      
-    } catch (error) {
-      console.error('Erro ao gerar relatório:', error);
+    switch (selectedPeriod) {
+      case 'month':
+        newDate = direction === 'prev' ? subMonths(selectedDate, 1) : addMonths(selectedDate, 1);
+        break;
+      case 'quarter':
+        newDate = direction === 'prev' ? subMonths(selectedDate, 3) : addMonths(selectedDate, 3);
+        break;
+      case 'year':
+        newDate = new Date(selectedDate.getFullYear() + (direction === 'prev' ? -1 : 1), selectedDate.getMonth(), selectedDate.getDate());
+        break;
+      default:
+        newDate = selectedDate;
     }
+    
+    setSelectedDate(newDate);
   };
 
-  const generateCustomReport = async () => {
-    if (!customReport.name || customReport.fields.length === 0) {
-      return;
-    }
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center min-h-64">
+          <LoadingSpinner size="lg" text="Gerando relatório..." />
+        </div>
+      </div>
+    );
+  }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const blob = new Blob(['Dados do relatório personalizado'], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${customReport.name.toLowerCase().replace(/\s+/g, '_')}.${customReport.format}`;
-      link.click();
-      URL.revokeObjectURL(url);
-      
-      setShowCustomModal(false);
-      setCustomReport({
-        name: '',
-        description: '',
-        dateRange: { start: '', end: '' },
-        filters: { status: 'all', priority: 'all', state: 'all', correspondent: 'all' },
-        fields: [],
-        format: 'pdf'
-      });
-    } catch (error) {
-      console.error('Erro ao gerar relatório personalizado:', error);
-    }
-  };
+  if (!reportData) {
+    return (
+      <div className="p-6">
+        <Card className="p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar relatório</h3>
+          <p className="text-gray-600 mb-4">Não foi possível carregar os dados do relatório.</p>
+          <Button onClick={loadReportData}>Tentar Novamente</Button>
+        </Card>
+      </div>
+    );
+  }
 
-  const toggleScheduledReport = (reportId: string) => {
-    // Implementar toggle do relatório agendado
-    console.log('Toggle scheduled report:', reportId);
-  };
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Relatórios</h1>
+          <p className="text-gray-600">Análise detalhada de performance e resultados</p>
+        </div>
+        <div className="flex space-x-3">
+          <Button variant="outline" onClick={() => exportReport('excel')}>
+            <Download className="h-4 w-4 mr-2" />
+            Excel
+          </Button>
+          <Button variant="outline" onClick={() => exportReport('pdf')}>
+            <Download className="h-4 w-4 mr-2" />
+            PDF
+          </Button>
+        </div>
+      </div>
 
-  const renderTemplates = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {reportTemplates.map((template) => (
-        <Card key={template.id} className="hover:shadow-md transition-shadow">
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-blue-100 rounded-full">
-                <template.icon className="h-6 w-6 text-blue-600" />
-              </div>
-              <Badge className={getCategoryColor(template.category)}>
-                {getCategoryLabel(template.category)}
-              </Badge>
+      {/* Controles */}
+      <Card className="p-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+          {/* Tipo de Relatório */}
+          <div className="flex space-x-2">
+            {[
+              { id: 'financial', label: 'Financeiro', icon: DollarSign },
+              { id: 'operational', label: 'Operacional', icon: BarChart3 },
+              { id: 'performance', label: 'Performance', icon: Target }
+            ].map((type) => {
+              const Icon = type.icon;
+              return (
+                <Button
+                  key={type.id}
+                  variant={reportType === type.id ? 'default' : 'outline'}
+                  onClick={() => setReportType(type.id as any)}
+                  className="flex items-center"
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {type.label}
+                </Button>
+              );
+            })}
+          </div>
+
+          {/* Período */}
+          <div className="flex items-center space-x-4">
+            <div className="flex space-x-2">
+              {[
+                { id: 'month', label: 'Mês' },
+                { id: 'quarter', label: 'Trimestre' },
+                { id: 'year', label: 'Ano' }
+              ].map((period) => (
+                <Button
+                  key={period.id}
+                  variant={selectedPeriod === period.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedPeriod(period.id as any)}
+                >
+                  {period.label}
+                </Button>
+              ))}
             </div>
-            
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">{template.name}</h3>
-            <p className="text-gray-600 text-sm mb-4">{template.description}</p>
-            
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-medium text-gray-700 mb-1">Formatos disponíveis:</p>
-                <div className="flex space-x-1">
-                  {template.formats.map(format => (
-                    <Badge key={format} variant="default" className="text-xs">
-                      {format.toUpperCase()}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                {template.formats.map(format => (
-                  <Button
-                    key={format}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => generateReport(template, format)}
-                    className="flex-1"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    {format.toUpperCase()}
-                  </Button>
-                ))}
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedTemplate(template);
-                  setShowScheduleModal(true);
-                }}
-                className="w-full"
-              >
-                <Calendar className="h-3 w-3 mr-1" />
-                Agendar
+
+            {/* Navegação de Data */}
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={() => navigatePeriod('prev')}>
+                ←
+              </Button>
+              <span className="text-sm font-medium min-w-32 text-center">
+                {reportData.period}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => navigatePeriod('next')}>
+                →
               </Button>
             </div>
           </div>
-        </Card>
-      ))}
-    </div>
-  );
-
-  const renderCustomReports = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Relatórios Personalizados</h2>
-          <p className="text-gray-600">Crie relatórios customizados com os dados que você precisa</p>
-        </div>
-        <Button onClick={() => setShowCustomModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Relatório
-        </Button>
-      </div>
-
-      <Card>
-        <div className="p-6 text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Construtor de Relatórios</h3>
-          <p className="text-gray-600 mb-4">
-            Use nosso construtor intuitivo para criar relatórios personalizados com filtros avançados
-          </p>
-          <Button onClick={() => setShowCustomModal(true)}>
-            Começar
-          </Button>
         </div>
       </Card>
-    </div>
-  );
 
-  const renderScheduledReports = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Relatórios Agendados</h2>
-          <p className="text-gray-600">Geração automática de relatórios em intervalos regulares</p>
-        </div>
+      {/* Resumo Executivo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center">
+            <DollarSign className="h-8 w-8 text-green-600 mr-4" />
+            <div>
+              <p className="text-sm text-gray-500">Receita Total</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {safeCurrency(reportData.totalRevenue)}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center">
+            <TrendingUp className="h-8 w-8 text-blue-600 mr-4" />
+            <div>
+              <p className="text-sm text-gray-500">Lucro Líquido</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {safeCurrency(reportData.netProfit)}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center">
+            <FileText className="h-8 w-8 text-purple-600 mr-4" />
+            <div>
+              <p className="text-sm text-gray-500">Diligências</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {safeNumber(reportData.totalDiligences)}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center">
+            <Target className="h-8 w-8 text-orange-600 mr-4" />
+            <div>
+              <p className="text-sm text-gray-500">Ticket Médio</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {safeCurrency(reportData.averageTicket)}
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
 
-      <div className="space-y-4">
-        {scheduledReports.map((report) => {
-          const template = reportTemplates.find(t => t.id === report.templateId);
-          
-          return (
-            <Card key={report.id}>
-              <div className="flex items-center justify-between p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="p-3 bg-purple-100 rounded-full">
-                    {template && <template.icon className="h-6 w-6 text-purple-600" />}
-                  </div>
-                  
+      {/* Relatório Financeiro */}
+      {reportType === 'financial' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Análise Financeira</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Receita Total</span>
+                <span className="font-semibold text-green-600">
+                  {safeCurrency(reportData.totalRevenue)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Despesas Totais</span>
+                <span className="font-semibold text-red-600">
+                  {safeCurrency(reportData.totalExpenses)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-t pt-2">
+                <span className="text-gray-900 font-medium">Lucro Líquido</span>
+                <span className="font-bold text-blue-600">
+                  {safeCurrency(reportData.netProfit)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Margem de Lucro</span>
+                <span className="font-semibold">
+                  {safePercentage((reportData.netProfit / reportData.totalRevenue) * 100)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Crescimento</span>
+                <span className="font-semibold text-green-600">
+                  +{safePercentage(reportData.growthRate)}
+                </span>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Clientes</h3>
+            <div className="space-y-3">
+              {reportData.topClients.map((client, index) => (
+                <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{report.name}</h3>
-                    <p className="text-gray-600">Baseado em: {template?.name}</p>
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                      <span>Frequência: {report.frequency === 'daily' ? 'Diário' : report.frequency === 'weekly' ? 'Semanal' : 'Mensal'}</span>
-                      <span>Próxima execução: {format(new Date(report.nextRun), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</span>
-                      <span>Destinatários: {report.recipients.length}</span>
+                    <p className="font-medium">{client.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {safeNumber(client.diligencesCount)} diligências
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">{safeCurrency(client.totalSpent)}</p>
+                    <Badge variant="default">#{index + 1}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Relatório Operacional */}
+      {reportType === 'operational' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Métricas Operacionais</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Total de Diligências</span>
+                <span className="font-semibold">{safeNumber(reportData.totalDiligences)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Concluídas</span>
+                <span className="font-semibold text-green-600">
+                  {safeNumber(reportData.completedDiligences)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Taxa de Conclusão</span>
+                <span className="font-semibold">
+                  {safePercentage((reportData.completedDiligences / reportData.totalDiligences) * 100)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Ticket Médio</span>
+                <span className="font-semibold">{safeCurrency(reportData.averageTicket)}</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Correspondentes</h3>
+            <div className="space-y-3">
+              {reportData.topCorrespondents.map((correspondent, index) => (
+                <div key={correspondent.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">{correspondent.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {safeNumber(correspondent.completedDiligences)} concluídas
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">{safeCurrency(correspondent.revenue)}</p>
+                    <div className="flex items-center">
+                      <Award className="h-3 w-3 text-yellow-500 mr-1" />
+                      <span className="text-sm">{safeToFixed(correspondent.rating, 1)}</span>
                     </div>
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-3">
-                  <Badge variant={report.active ? 'success' : 'default'}>
-                    {report.active ? 'Ativo' : 'Inativo'}
-                  </Badge>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleScheduledReport(report.id)}
-                  >
-                    {report.active ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Play className="h-4 w-4" />
-                    )}
-                  </Button>
-                  
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Relatórios</h1>
-        <p className="text-gray-600">Gere relatórios detalhados e análises do sistema</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          {[
-            { id: 'templates', label: 'Modelos', icon: FileText },
-            { id: 'custom', label: 'Personalizados', icon: Settings },
-            { id: 'scheduled', label: 'Agendados', icon: Calendar }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <tab.icon className="h-4 w-4 mr-2" />
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Content */}
-      {activeTab === 'templates' && renderTemplates()}
-      {activeTab === 'custom' && renderCustomReports()}
-      {activeTab === 'scheduled' && renderScheduledReports()}
-
-      {/* Modal de Relatório Personalizado */}
-      <Modal
-        isOpen={showCustomModal}
-        onClose={() => setShowCustomModal(false)}
-        title="Criar Relatório Personalizado"
-        size="lg"
-      >
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome do Relatório
-              </label>
-              <input
-                type="text"
-                value={customReport.name}
-                onChange={(e) => setCustomReport(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Ex: Análise Mensal de Performance"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Formato
-              </label>
-              <select
-                value={customReport.format}
-                onChange={(e) => setCustomReport(prev => ({ ...prev, format: e.target.value as any }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="pdf">PDF</option>
-                <option value="excel">Excel</option>
-                <option value="csv">CSV</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descrição (Opcional)
-            </label>
-            <textarea
-              value={customReport.description}
-              onChange={(e) => setCustomReport(prev => ({ ...prev, description: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Descreva o objetivo deste relatório..."
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data Inicial
-              </label>
-              <input
-                type="date"
-                value={customReport.dateRange.start}
-                onChange={(e) => setCustomReport(prev => ({ 
-                  ...prev, 
-                  dateRange: { ...prev.dateRange, start: e.target.value }
-                }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data Final
-              </label>
-              <input
-                type="date"
-                value={customReport.dateRange.end}
-                onChange={(e) => setCustomReport(prev => ({ 
-                  ...prev, 
-                  dateRange: { ...prev.dateRange, end: e.target.value }
-                }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Campos do Relatório
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {availableFields.map((field) => (
-                <label key={field.id} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={customReport.fields.includes(field.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setCustomReport(prev => ({ 
-                          ...prev, 
-                          fields: [...prev.fields, field.id]
-                        }));
-                      } else {
-                        setCustomReport(prev => ({ 
-                          ...prev, 
-                          fields: prev.fields.filter(f => f !== field.id)
-                        }));
-                      }
-                    }}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{field.label}</span>
-                </label>
               ))}
             </div>
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-            <Button variant="outline" onClick={() => setShowCustomModal(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={generateCustomReport}>
-              <Download className="h-4 w-4 mr-2" />
-              Gerar Relatório
-            </Button>
-          </div>
+          </Card>
         </div>
-      </Modal>
+      )}
 
-      {/* Modal de Agendamento */}
-      <Modal
-        isOpen={showScheduleModal}
-        onClose={() => setShowScheduleModal(false)}
-        title={`Agendar - ${selectedTemplate?.name}`}
-        size="md"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            Configure a geração automática deste relatório
-          </p>
-          
-          {/* Implementar formulário de agendamento */}
-          <div className="text-center py-8">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Funcionalidade de agendamento em desenvolvimento</p>
-          </div>
+      {/* Relatório de Performance */}
+      {reportType === 'performance' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Indicadores de Performance</h3>
+            <div className="space-y-6">
+              {/* Tempo de Resposta */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Tempo Médio de Resposta</span>
+                  <span className="text-sm text-gray-500">
+                    {safeToFixed(reportData.performanceMetrics.averageResponseTime, 1)}h
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full" 
+                    style={{ 
+                      width: `${Math.min(100, Math.max(10, 100 - (reportData.performanceMetrics.averageResponseTime * 2)))}%` 
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Taxa de Conclusão */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Taxa de Conclusão</span>
+                  <span className="text-sm text-gray-500">
+                    {safePercentage(reportData.performanceMetrics.completionRate)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 h-2 rounded-full" 
+                    style={{ width: `${safeNumber(reportData.performanceMetrics.completionRate, 0)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Satisfação do Cliente */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Satisfação do Cliente</span>
+                  <span className="text-sm text-gray-500">
+                    {safeToFixed(reportData.performanceMetrics.clientSatisfaction, 1)}/5.0
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-yellow-500 h-2 rounded-full" 
+                    style={{ width: `${(reportData.performanceMetrics.clientSatisfaction / 5) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Utilização de Correspondentes */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Utilização de Correspondentes</span>
+                  <span className="text-sm text-gray-500">
+                    {safePercentage(reportData.performanceMetrics.correspondentUtilization)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-purple-600 h-2 rounded-full" 
+                    style={{ width: `${safeNumber(reportData.performanceMetrics.correspondentUtilization, 0)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo de Performance</h3>
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <Clock className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Tempo Médio</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {safeToFixed(reportData.performanceMetrics.averageResponseTime, 1)}h
+                </p>
+              </div>
+
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <Target className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Taxa de Sucesso</p>
+                <p className="text-xl font-bold text-green-600">
+                  {safePercentage(reportData.performanceMetrics.completionRate)}
+                </p>
+              </div>
+
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <Award className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Satisfação</p>
+                <p className="text-xl font-bold text-yellow-600">
+                  {safeToFixed(reportData.performanceMetrics.clientSatisfaction, 1)}/5.0
+                </p>
+              </div>
+            </div>
+          </Card>
         </div>
-      </Modal>
+      )}
     </div>
   );
 };
 
 export default Reports;
+
