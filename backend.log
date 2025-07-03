@@ -1,0 +1,314 @@
+
+> jurisconnect-backend@1.0.0 dev
+> nodemon --exec ts-node -P tsconfig.json src/index.ts
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[dotenv@16.6.0] injecting env (12) from .env
+🚀 Iniciando servidor JurisConnect...
+query: SELECT version()
+query: SELECT * FROM current_schema()
+query: CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+query: START TRANSACTION
+query: SELECT * FROM current_schema()
+query: SELECT * FROM current_database()
+query: SELECT "table_schema", "table_name", obj_description(('"' || "table_schema" || '"."' || "table_name" || '"')::regclass, 'pg_class') AS table_comment FROM "information_schema"."tables" WHERE ("table_schema" = 'public' AND "table_name" = 'attachments') OR ("table_schema" = 'public' AND "table_name" = 'payments') OR ("table_schema" = 'public' AND "table_name" = 'payment_proofs') OR ("table_schema" = 'public' AND "table_name" = 'status_history') OR ("table_schema" = 'public' AND "table_name" = 'diligences') OR ("table_schema" = 'public' AND "table_name" = 'notifications') OR ("table_schema" = 'public' AND "table_name" = 'users')
+query: SELECT TRUE FROM information_schema.columns WHERE table_name = 'pg_class' and column_name = 'relispartition'
+query: SELECT columns.*, pg_catalog.col_description(('"' || table_catalog || '"."' || table_schema || '"."' || table_name || '"')::regclass::oid, ordinal_position) AS description, ('"' || "udt_schema" || '"."' || "udt_name" || '"')::"regtype" AS "regtype", pg_catalog.format_type("col_attr"."atttypid", "col_attr"."atttypmod") AS "format_type" FROM "information_schema"."columns" LEFT JOIN "pg_catalog"."pg_attribute" AS "col_attr" ON "col_attr"."attname" = "columns"."column_name" AND "col_attr"."attrelid" = ( SELECT "cls"."oid" FROM "pg_catalog"."pg_class" AS "cls" LEFT JOIN "pg_catalog"."pg_namespace" AS "ns" ON "ns"."oid" = "cls"."relnamespace" WHERE "cls"."relname" = "columns"."table_name" AND "ns"."nspname" = "columns"."table_schema" ) WHERE ("table_schema" = 'public' AND "table_name" = 'diligences') OR ("table_schema" = 'public' AND "table_name" = 'attachments') OR ("table_schema" = 'public' AND "table_name" = 'users') OR ("table_schema" = 'public' AND "table_name" = 'payments') OR ("table_schema" = 'public' AND "table_name" = 'payment_proofs') OR ("table_schema" = 'public' AND "table_name" = 'status_history') OR ("table_schema" = 'public' AND "table_name" = 'notifications')
+query: SELECT "ns"."nspname" AS "table_schema", "t"."relname" AS "table_name", "cnst"."conname" AS "constraint_name", pg_get_constraintdef("cnst"."oid") AS "expression", CASE "cnst"."contype" WHEN 'p' THEN 'PRIMARY' WHEN 'u' THEN 'UNIQUE' WHEN 'c' THEN 'CHECK' WHEN 'x' THEN 'EXCLUDE' END AS "constraint_type", "a"."attname" AS "column_name" FROM "pg_constraint" "cnst" INNER JOIN "pg_class" "t" ON "t"."oid" = "cnst"."conrelid" INNER JOIN "pg_namespace" "ns" ON "ns"."oid" = "cnst"."connamespace" LEFT JOIN "pg_attribute" "a" ON "a"."attrelid" = "cnst"."conrelid" AND "a"."attnum" = ANY ("cnst"."conkey") WHERE "t"."relkind" IN ('r', 'p') AND (("ns"."nspname" = 'public' AND "t"."relname" = 'diligences') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'attachments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'users') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payment_proofs') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'status_history') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'notifications'))
+query: SELECT "ns"."nspname" AS "table_schema", "t"."relname" AS "table_name", "i"."relname" AS "constraint_name", "a"."attname" AS "column_name", CASE "ix"."indisunique" WHEN 't' THEN 'TRUE' ELSE'FALSE' END AS "is_unique", pg_get_expr("ix"."indpred", "ix"."indrelid") AS "condition", "types"."typname" AS "type_name", "am"."amname" AS "index_type" FROM "pg_class" "t" INNER JOIN "pg_index" "ix" ON "ix"."indrelid" = "t"."oid" INNER JOIN "pg_attribute" "a" ON "a"."attrelid" = "t"."oid"  AND "a"."attnum" = ANY ("ix"."indkey") INNER JOIN "pg_namespace" "ns" ON "ns"."oid" = "t"."relnamespace" INNER JOIN "pg_class" "i" ON "i"."oid" = "ix"."indexrelid" INNER JOIN "pg_type" "types" ON "types"."oid" = "a"."atttypid" INNER JOIN "pg_am" "am" ON "i"."relam" = "am"."oid" LEFT JOIN "pg_constraint" "cnst" ON "cnst"."conname" = "i"."relname" WHERE "t"."relkind" IN ('r', 'p') AND "cnst"."contype" IS NULL AND (("ns"."nspname" = 'public' AND "t"."relname" = 'diligences') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'attachments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'users') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payment_proofs') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'status_history') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'notifications'))
+query: SELECT "con"."conname" AS "constraint_name", "con"."nspname" AS "table_schema", "con"."relname" AS "table_name", "att2"."attname" AS "column_name", "ns"."nspname" AS "referenced_table_schema", "cl"."relname" AS "referenced_table_name", "att"."attname" AS "referenced_column_name", "con"."confdeltype" AS "on_delete", "con"."confupdtype" AS "on_update", "con"."condeferrable" AS "deferrable", "con"."condeferred" AS "deferred" FROM ( SELECT UNNEST ("con1"."conkey") AS "parent", UNNEST ("con1"."confkey") AS "child", "con1"."confrelid", "con1"."conrelid", "con1"."conname", "con1"."contype", "ns"."nspname", "cl"."relname", "con1"."condeferrable", CASE WHEN "con1"."condeferred" THEN 'INITIALLY DEFERRED' ELSE 'INITIALLY IMMEDIATE' END as condeferred, CASE "con1"."confdeltype" WHEN 'a' THEN 'NO ACTION' WHEN 'r' THEN 'RESTRICT' WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL' WHEN 'd' THEN 'SET DEFAULT' END as "confdeltype", CASE "con1"."confupdtype" WHEN 'a' THEN 'NO ACTION' WHEN 'r' THEN 'RESTRICT' WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL' WHEN 'd' THEN 'SET DEFAULT' END as "confupdtype" FROM "pg_class" "cl" INNER JOIN "pg_namespace" "ns" ON "cl"."relnamespace" = "ns"."oid" INNER JOIN "pg_constraint" "con1" ON "con1"."conrelid" = "cl"."oid" WHERE "con1"."contype" = 'f' AND (("ns"."nspname" = 'public' AND "cl"."relname" = 'diligences') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'attachments') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'users') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'payments') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'payment_proofs') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'status_history') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'notifications')) ) "con" INNER JOIN "pg_attribute" "att" ON "att"."attrelid" = "con"."confrelid" AND "att"."attnum" = "con"."child" INNER JOIN "pg_class" "cl" ON "cl"."oid" = "con"."confrelid"  AND "cl"."relispartition" = 'f'INNER JOIN "pg_namespace" "ns" ON "cl"."relnamespace" = "ns"."oid" INNER JOIN "pg_attribute" "att2" ON "att2"."attrelid" = "con"."conrelid" AND "att2"."attnum" = "con"."parent"
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'diligences' AND "column_name"='status'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'diligences' AND "column_name"='priority'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'payment_proofs' AND "column_name"='type'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'payment_proofs' AND "column_name"='status'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'status_history' AND "column_name"='entityType'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'notifications' AND "column_name"='type'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'diligences_status_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'diligences_priority_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'payment_proofs_type_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'payment_proofs_status_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'status_history_entitytype_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'notifications_type_enum'
+query: SELECT * FROM "information_schema"."tables" WHERE "table_schema" = 'public' AND "table_name" = 'typeorm_metadata'
+query: COMMIT
+✅ Banco de dados conectado com sucesso!
+
+🎉 ===================================
+🎉 JURISCONNECT BACKEND INICIADO!
+🎉 ===================================
+🌐 Servidor rodando em: http://localhost:3002
+🔗 API Base URL: http://localhost:3002/api
+❤️  Health Check: http://localhost:3002/api/health
+🔐 Auth Health: http://localhost:3002/api/auth/health
+
+📋 Rotas disponíveis:
+   GET  /api/health
+   GET  /api/auth/health
+   GET  /api/status
+   GET  /api/ping
+   POST /api/auth/login
+   GET  /api/users
+   GET  /api/diligences
+
+🔧 Para testar a conexão:
+   curl http://localhost:3002/api/health
+
+2025-07-02T00:22:03.326Z - GET /api/health
+2025-07-02T00:24:50.134Z - GET /api/auth/health
+2025-07-02T00:24:50.138Z - GET /api/auth/health
+2025-07-02T00:25:20.580Z - GET /api/auth/health
+2025-07-02T00:25:20.911Z - GET /api/auth/health
+2025-07-02T00:25:20.914Z - GET /api/auth/health
+^C[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting child process[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[dotenv@16.6.0] injecting env (12) from .env
+🚀 Iniciando servidor JurisConnect...
+query: SELECT version()
+query: SELECT * FROM current_schema()
+query: CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+query: START TRANSACTION
+query: SELECT * FROM current_schema()
+query: SELECT * FROM current_database()
+query: SELECT "table_schema", "table_name", obj_description(('"' || "table_schema" || '"."' || "table_name" || '"')::regclass, 'pg_class') AS table_comment FROM "information_schema"."tables" WHERE ("table_schema" = 'public' AND "table_name" = 'attachments') OR ("table_schema" = 'public' AND "table_name" = 'payments') OR ("table_schema" = 'public' AND "table_name" = 'payment_proofs') OR ("table_schema" = 'public' AND "table_name" = 'status_history') OR ("table_schema" = 'public' AND "table_name" = 'diligences') OR ("table_schema" = 'public' AND "table_name" = 'notifications') OR ("table_schema" = 'public' AND "table_name" = 'users')
+query: SELECT TRUE FROM information_schema.columns WHERE table_name = 'pg_class' and column_name = 'relispartition'
+query: SELECT columns.*, pg_catalog.col_description(('"' || table_catalog || '"."' || table_schema || '"."' || table_name || '"')::regclass::oid, ordinal_position) AS description, ('"' || "udt_schema" || '"."' || "udt_name" || '"')::"regtype" AS "regtype", pg_catalog.format_type("col_attr"."atttypid", "col_attr"."atttypmod") AS "format_type" FROM "information_schema"."columns" LEFT JOIN "pg_catalog"."pg_attribute" AS "col_attr" ON "col_attr"."attname" = "columns"."column_name" AND "col_attr"."attrelid" = ( SELECT "cls"."oid" FROM "pg_catalog"."pg_class" AS "cls" LEFT JOIN "pg_catalog"."pg_namespace" AS "ns" ON "ns"."oid" = "cls"."relnamespace" WHERE "cls"."relname" = "columns"."table_name" AND "ns"."nspname" = "columns"."table_schema" ) WHERE ("table_schema" = 'public' AND "table_name" = 'diligences') OR ("table_schema" = 'public' AND "table_name" = 'attachments') OR ("table_schema" = 'public' AND "table_name" = 'users') OR ("table_schema" = 'public' AND "table_name" = 'payments') OR ("table_schema" = 'public' AND "table_name" = 'payment_proofs') OR ("table_schema" = 'public' AND "table_name" = 'status_history') OR ("table_schema" = 'public' AND "table_name" = 'notifications')
+query: SELECT "ns"."nspname" AS "table_schema", "t"."relname" AS "table_name", "cnst"."conname" AS "constraint_name", pg_get_constraintdef("cnst"."oid") AS "expression", CASE "cnst"."contype" WHEN 'p' THEN 'PRIMARY' WHEN 'u' THEN 'UNIQUE' WHEN 'c' THEN 'CHECK' WHEN 'x' THEN 'EXCLUDE' END AS "constraint_type", "a"."attname" AS "column_name" FROM "pg_constraint" "cnst" INNER JOIN "pg_class" "t" ON "t"."oid" = "cnst"."conrelid" INNER JOIN "pg_namespace" "ns" ON "ns"."oid" = "cnst"."connamespace" LEFT JOIN "pg_attribute" "a" ON "a"."attrelid" = "cnst"."conrelid" AND "a"."attnum" = ANY ("cnst"."conkey") WHERE "t"."relkind" IN ('r', 'p') AND (("ns"."nspname" = 'public' AND "t"."relname" = 'diligences') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'attachments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'users') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payment_proofs') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'status_history') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'notifications'))
+query: SELECT "ns"."nspname" AS "table_schema", "t"."relname" AS "table_name", "i"."relname" AS "constraint_name", "a"."attname" AS "column_name", CASE "ix"."indisunique" WHEN 't' THEN 'TRUE' ELSE'FALSE' END AS "is_unique", pg_get_expr("ix"."indpred", "ix"."indrelid") AS "condition", "types"."typname" AS "type_name", "am"."amname" AS "index_type" FROM "pg_class" "t" INNER JOIN "pg_index" "ix" ON "ix"."indrelid" = "t"."oid" INNER JOIN "pg_attribute" "a" ON "a"."attrelid" = "t"."oid"  AND "a"."attnum" = ANY ("ix"."indkey") INNER JOIN "pg_namespace" "ns" ON "ns"."oid" = "t"."relnamespace" INNER JOIN "pg_class" "i" ON "i"."oid" = "ix"."indexrelid" INNER JOIN "pg_type" "types" ON "types"."oid" = "a"."atttypid" INNER JOIN "pg_am" "am" ON "i"."relam" = "am"."oid" LEFT JOIN "pg_constraint" "cnst" ON "cnst"."conname" = "i"."relname" WHERE "t"."relkind" IN ('r', 'p') AND "cnst"."contype" IS NULL AND (("ns"."nspname" = 'public' AND "t"."relname" = 'diligences') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'attachments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'users') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payments') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'payment_proofs') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'status_history') OR ("ns"."nspname" = 'public' AND "t"."relname" = 'notifications'))
+query: SELECT "con"."conname" AS "constraint_name", "con"."nspname" AS "table_schema", "con"."relname" AS "table_name", "att2"."attname" AS "column_name", "ns"."nspname" AS "referenced_table_schema", "cl"."relname" AS "referenced_table_name", "att"."attname" AS "referenced_column_name", "con"."confdeltype" AS "on_delete", "con"."confupdtype" AS "on_update", "con"."condeferrable" AS "deferrable", "con"."condeferred" AS "deferred" FROM ( SELECT UNNEST ("con1"."conkey") AS "parent", UNNEST ("con1"."confkey") AS "child", "con1"."confrelid", "con1"."conrelid", "con1"."conname", "con1"."contype", "ns"."nspname", "cl"."relname", "con1"."condeferrable", CASE WHEN "con1"."condeferred" THEN 'INITIALLY DEFERRED' ELSE 'INITIALLY IMMEDIATE' END as condeferred, CASE "con1"."confdeltype" WHEN 'a' THEN 'NO ACTION' WHEN 'r' THEN 'RESTRICT' WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL' WHEN 'd' THEN 'SET DEFAULT' END as "confdeltype", CASE "con1"."confupdtype" WHEN 'a' THEN 'NO ACTION' WHEN 'r' THEN 'RESTRICT' WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL' WHEN 'd' THEN 'SET DEFAULT' END as "confupdtype" FROM "pg_class" "cl" INNER JOIN "pg_namespace" "ns" ON "cl"."relnamespace" = "ns"."oid" INNER JOIN "pg_constraint" "con1" ON "con1"."conrelid" = "cl"."oid" WHERE "con1"."contype" = 'f' AND (("ns"."nspname" = 'public' AND "cl"."relname" = 'diligences') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'attachments') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'users') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'payments') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'payment_proofs') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'status_history') OR ("ns"."nspname" = 'public' AND "cl"."relname" = 'notifications')) ) "con" INNER JOIN "pg_attribute" "att" ON "att"."attrelid" = "con"."confrelid" AND "att"."attnum" = "con"."child" INNER JOIN "pg_class" "cl" ON "cl"."oid" = "con"."confrelid"  AND "cl"."relispartition" = 'f'INNER JOIN "pg_namespace" "ns" ON "cl"."relnamespace" = "ns"."oid" INNER JOIN "pg_attribute" "att2" ON "att2"."attrelid" = "con"."conrelid" AND "att2"."attnum" = "con"."parent"
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'diligences' AND "column_name"='status'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'diligences' AND "column_name"='priority'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'payment_proofs' AND "column_name"='type'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'payment_proofs' AND "column_name"='status'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'status_history' AND "column_name"='entityType'
+query: SELECT "udt_schema", "udt_name" FROM "information_schema"."columns" WHERE "table_schema" = 'public' AND "table_name" = 'notifications' AND "column_name"='type'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'diligences_status_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'diligences_priority_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'payment_proofs_type_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'payment_proofs_status_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'status_history_entitytype_enum'
+query: SELECT "e"."enumlabel" AS "value" FROM "pg_enum" "e" INNER JOIN "pg_type" "t" ON "t"."oid" = "e"."enumtypid" INNER JOIN "pg_namespace" "n" ON "n"."oid" = "t"."typnamespace" WHERE "n"."nspname" = 'public' AND "t"."typname" = 'notifications_type_enum'
+query: SELECT * FROM "information_schema"."tables" WHERE "table_schema" = 'public' AND "table_name" = 'typeorm_metadata'
+query: COMMIT
+✅ Banco de dados conectado com sucesso!
+
+🎉 ===================================
+🎉 JURISCONNECT BACKEND INICIADO!
+🎉 ===================================
+🌐 Servidor rodando em: http://localhost:3002
+🔗 API Base URL: http://localhost:3002/api
+❤️  Health Check: http://localhost:3002/api/health
+🔐 Auth Health: http://localhost:3002/api/auth/health
+
+📋 Rotas disponíveis:
+   GET  /api/health
+   GET  /api/auth/health
+   GET  /api/status
+   GET  /api/ping
+   POST /api/auth/login
+   GET  /api/users
+   GET  /api/diligences
+
+🔧 Para testar a conexão:
+   curl http://localhost:3002/api/health
+
+^C2025-07-02T00:25:50.848Z - GET /api/auth/health
+2025-07-02T00:25:50.921Z - GET /api/auth/health
+2025-07-02T00:26:20.533Z - GET /api/auth/health
+2025-07-02T00:26:20.925Z - GET /api/auth/health
+2025-07-02T00:26:50.855Z - GET /api/auth/health
+2025-07-02T00:26:50.914Z - GET /api/auth/health
+2025-07-02T00:27:20.538Z - GET /api/auth/health
+2025-07-02T00:27:20.914Z - GET /api/auth/health
+2025-07-02T00:27:28.209Z - GET /api/auth/health
+2025-07-02T00:27:28.212Z - GET /api/auth/health
+2025-07-02T22:23:12.426Z - GET /api/auth/health
+2025-07-02T22:23:42.140Z - GET /api/auth/health
+2025-07-02T22:24:12.449Z - GET /api/auth/health
+2025-07-02T22:24:42.117Z - GET /api/auth/health
+2025-07-02T22:25:12.444Z - GET /api/auth/health
+2025-07-02T22:25:42.098Z - GET /api/auth/health
+2025-07-02T22:26:42.916Z - GET /api/auth/health
+2025-07-02T22:27:13.177Z - GET /api/auth/health
+2025-07-02T22:27:13.234Z - GET /api/auth/health
+2025-07-02T22:27:41.088Z - GET /api/auth/health
+2025-07-02T22:28:11.394Z - GET /api/auth/health
+2025-07-02T22:28:37.036Z - GET /api/auth/health
+2025-07-02T22:28:37.056Z - GET /api/auth/health
+2025-07-02T22:28:51.242Z - GET /api/auth/health
+2025-07-02T22:28:51.246Z - GET /api/auth/health
+2025-07-02T22:29:18.844Z - GET /api/auth/health
+2025-07-02T22:29:48.890Z - GET /api/auth/health
+2025-07-02T22:30:19.163Z - GET /api/auth/health
+2025-07-02T22:30:48.866Z - GET /api/auth/health
+2025-07-02T22:30:49.615Z - GET /api/health
+2025-07-02T22:30:49.628Z - GET /api/health
+2025-07-02T22:31:01.354Z - GET /api/health
+2025-07-02T22:31:01.360Z - GET /api/health
+2025-07-02T22:31:31.376Z - GET /api/health
+2025-07-02T22:32:01.675Z - GET /api/health
+2025-07-02T22:32:31.371Z - GET /api/health
+2025-07-02T22:33:01.666Z - GET /api/health
+2025-07-02T22:33:31.369Z - GET /api/health
+2025-07-02T22:34:01.675Z - GET /api/health
+2025-07-02T22:34:21.434Z - GET /api/health
+2025-07-02T22:34:21.445Z - GET /api/health
+2025-07-02T22:34:51.444Z - GET /api/health
+2025-07-02T22:35:21.765Z - GET /api/health
+2025-07-02T22:35:51.445Z - GET /api/health
+2025-07-02T22:36:21.750Z - GET /api/health
+2025-07-02T22:36:51.444Z - GET /api/health
+2025-07-02T22:37:21.752Z - GET /api/health
+2025-07-02T22:37:31.584Z - GET /api/health
+2025-07-02T22:37:31.591Z - GET /api/health
+2025-07-02T22:38:01.603Z - GET /api/health
+2025-07-02T22:38:31.906Z - GET /api/health
+2025-07-02T22:39:01.592Z - GET /api/health
+2025-07-02T22:39:31.908Z - GET /api/health
+2025-07-02T22:40:01.603Z - GET /api/health
+2025-07-02T22:40:31.904Z - GET /api/health
+2025-07-02T22:41:01.591Z - GET /api/health
+2025-07-02T22:41:31.916Z - GET /api/health
+2025-07-02T22:42:01.589Z - GET /api/health
+2025-07-02T22:42:31.898Z - GET /api/health
+2025-07-02T22:43:01.604Z - GET /api/health
+2025-07-02T22:43:31.903Z - GET /api/health
+2025-07-02T22:44:01.599Z - GET /api/health
+2025-07-02T22:44:31.913Z - GET /api/health
+2025-07-02T22:45:01.603Z - GET /api/health
+2025-07-02T22:45:31.898Z - GET /api/health
+2025-07-02T22:46:01.594Z - GET /api/health
+2025-07-02T22:46:31.902Z - GET /api/health
+2025-07-02T22:47:01.603Z - GET /api/health
+2025-07-02T22:47:31.902Z - GET /api/health
+2025-07-02T22:48:01.598Z - GET /api/health
+2025-07-02T22:48:31.914Z - GET /api/health
+2025-07-02T22:49:01.600Z - GET /api/health
+2025-07-02T22:49:31.910Z - GET /api/health
+2025-07-02T22:50:01.601Z - GET /api/health
+2025-07-02T22:50:31.917Z - GET /api/health
+2025-07-02T22:51:01.598Z - GET /api/health
+2025-07-02T22:51:31.903Z - GET /api/health
+2025-07-02T22:52:01.594Z - GET /api/health
+2025-07-02T22:52:31.910Z - GET /api/health
+2025-07-02T22:53:01.602Z - GET /api/health
+2025-07-02T22:53:31.911Z - GET /api/health
+2025-07-02T22:54:01.602Z - GET /api/health
+2025-07-02T22:54:31.908Z - GET /api/health
+2025-07-02T22:55:01.596Z - GET /api/health
+2025-07-02T22:55:31.904Z - GET /api/health
+2025-07-02T22:56:01.600Z - GET /api/health
+2025-07-02T22:56:10.216Z - GET /api/health
+2025-07-02T22:56:10.219Z - GET /api/health
+2025-07-02T22:56:39.928Z - GET /api/health
+2025-07-02T22:57:09.924Z - GET /api/health
+2025-07-02T22:57:40.238Z - GET /api/health
+2025-07-02T22:58:09.922Z - GET /api/health
+2025-07-02T22:58:40.238Z - GET /api/health
+2025-07-02T22:59:10.008Z - GET /api/health
+2025-07-02T22:59:40.238Z - GET /api/health
+2025-07-02T23:00:09.927Z - GET /api/health
+2025-07-02T23:00:40.232Z - GET /api/health
+2025-07-02T23:01:09.924Z - GET /api/health
+2025-07-02T23:01:40.240Z - GET /api/health
+2025-07-02T23:02:09.920Z - GET /api/health
+2025-07-02T23:02:40.234Z - GET /api/health
+2025-07-02T23:03:09.943Z - GET /api/health
+2025-07-02T23:03:40.315Z - GET /api/health
+2025-07-02T23:04:10.003Z - GET /api/health
+2025-07-02T23:05:03.316Z - GET /api/health
+2025-07-02T23:06:03.004Z - GET /api/health
+2025-07-02T23:07:03.310Z - GET /api/health
+2025-07-02T23:08:03.011Z - GET /api/health
+2025-07-02T23:09:03.323Z - GET /api/health
+2025-07-02T23:10:03.006Z - GET /api/health
+2025-07-02T23:11:03.319Z - GET /api/health
+2025-07-02T23:12:03.010Z - GET /api/health
+2025-07-02T23:13:03.309Z - GET /api/health
+2025-07-02T23:14:03.007Z - GET /api/health
+2025-07-02T23:15:03.313Z - GET /api/health
+2025-07-02T23:16:03.011Z - GET /api/health
+2025-07-02T23:17:03.313Z - GET /api/health
+2025-07-02T23:18:03.008Z - GET /api/health
+2025-07-02T23:19:03.321Z - GET /api/health
+2025-07-02T23:20:03.003Z - GET /api/health
+2025-07-02T23:21:03.320Z - GET /api/health
+2025-07-02T23:22:03.012Z - GET /api/health
+2025-07-02T23:22:19.524Z - GET /api/health
+2025-07-02T23:22:39.927Z - GET /api/health
+2025-07-02T23:22:59.481Z - GET /api/health
+2025-07-02T23:22:59.483Z - GET /api/health
+2025-07-02T23:23:29.175Z - GET /api/health
+2025-07-02T23:23:59.477Z - GET /api/health
+2025-07-02T23:24:29.175Z - GET /api/health
+2025-07-02T23:24:59.488Z - GET /api/health
+2025-07-02T23:25:03.453Z - GET /api/health
+2025-07-02T23:25:03.456Z - GET /api/health
+2025-07-02T23:25:06.166Z - GET /api/health
+2025-07-02T23:25:06.169Z - GET /api/health
+2025-07-02T23:25:36.479Z - GET /api/health
+2025-07-02T23:26:06.170Z - GET /api/health
+2025-07-02T23:26:36.489Z - GET /api/health
+2025-07-02T23:27:06.180Z - GET /api/health
+2025-07-02T23:27:36.483Z - GET /api/health
+2025-07-02T23:28:06.172Z - GET /api/health
+2025-07-02T23:28:36.477Z - GET /api/health
+2025-07-02T23:29:06.183Z - GET /api/health
+2025-07-02T23:29:36.482Z - GET /api/health
+2025-07-02T23:29:59.512Z - GET /api/health
+2025-07-02T23:29:59.515Z - GET /api/health
+2025-07-02T23:30:02.850Z - GET /api/health
+2025-07-02T23:30:02.854Z - GET /api/health
+2025-07-02T23:30:33.173Z - GET /api/health
+2025-07-02T23:31:02.863Z - GET /api/health
+2025-07-02T23:31:33.167Z - GET /api/health
+2025-07-02T23:32:02.864Z - GET /api/health
+2025-07-02T23:32:33.169Z - GET /api/health
+2025-07-02T23:33:02.862Z - GET /api/health
+2025-07-02T23:33:33.165Z - GET /api/health
+2025-07-02T23:34:02.873Z - GET /api/health
+2025-07-02T23:34:33.173Z - GET /api/health
+2025-07-02T23:35:02.864Z - GET /api/health
+2025-07-02T23:35:16.251Z - GET /api/health
+2025-07-02T23:35:16.254Z - GET /api/health
+2025-07-02T23:35:20.057Z - GET /api/health
+2025-07-02T23:35:20.061Z - GET /api/health
+2025-07-02T23:40:44.085Z - GET /api/health
+2025-07-02T23:40:44.088Z - GET /api/health
+2025-07-02T23:41:07.634Z - GET /api/health
+2025-07-02T23:41:07.637Z - GET /api/health
+2025-07-02T23:43:04.555Z - GET /api/health
+2025-07-02T23:43:04.559Z - GET /api/health
+2025-07-02T23:43:34.264Z - GET /api/health
+2025-07-02T23:44:04.574Z - GET /api/health
+2025-07-02T23:44:34.256Z - GET /api/health
+2025-07-02T23:45:04.575Z - GET /api/health
+2025-07-02T23:45:34.272Z - GET /api/health
+2025-07-02T23:46:04.567Z - GET /api/health
+2025-07-02T23:46:20.664Z - GET /api/health
+2025-07-02T23:46:20.667Z - GET /api/health
+2025-07-02T23:46:50.669Z - GET /api/health
+2025-07-02T23:47:20.989Z - GET /api/health
+2025-07-02T23:47:50.676Z - GET /api/health
+2025-07-02T23:47:56.287Z - GET /api/health
+2025-07-02T23:47:56.292Z - GET /api/health
+2025-07-02T23:48:06.696Z - GET /api/health
+2025-07-02T23:48:06.700Z - GET /api/health
+2025-07-02T23:48:31.160Z - GET /api/health
+2025-07-02T23:48:31.164Z - GET /api/health
+2025-07-02T23:49:01.178Z - GET /api/health
+2025-07-02T23:49:31.489Z - GET /api/health
+2025-07-02T23:50:01.182Z - GET /api/health
+2025-07-02T23:50:31.484Z - GET /api/health
+2025-07-02T23:51:01.168Z - GET /api/health
+2025-07-02T23:51:31.521Z - GET /api/health
+2025-07-02T23:51:31.556Z - GET /api/health
+2025-07-02T23:51:31.560Z - GET /api/health
+2025-07-02T23:51:33.466Z - GET /api/health
+2025-07-02T23:51:33.470Z - GET /api/health
+2025-07-02T23:52:03.467Z - GET /api/health
+2025-07-02T23:52:34.318Z - GET /api/health

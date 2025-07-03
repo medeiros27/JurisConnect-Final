@@ -1,11 +1,10 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
-// A sua lógica para obter a URL base está ótima.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000, // Aumentado para 15 segundos
   headers: {
     'Content-Type': 'application/json',
   }
@@ -25,30 +24,30 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptador para lidar com respostas e erros
+// Interceptador para padronizar respostas e tratar erros globais
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // --- CORREÇÃO ESSENCIAL ---
-    // Retornamos apenas a propriedade 'data' da resposta.
-    // Isto garante que os seus serviços e hooks recebem
-    // diretamente o array ou objeto JSON que o backend enviou,
-    // o que resolve o erro ".filter is not a function".
+    // PADRONIZAÇÃO: Retorna sempre a propriedade 'data' da resposta.
+    // Isto resolve os erros de ".filter is not a function" em toda a aplicação.
     return response.data;
   },
   (error) => {
-    // A sua lógica de tratamento de erros foi mantida.
-    console.error(`❌ Erro na resposta da API:`, error.message);
+    console.error(`❌ Erro na resposta da API:`, error.config?.url, error.message);
 
+    // Tratamento global de erro de autenticação
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
+      // Evita loops de redirecionamento se já estiver na página de login
       if (currentPath !== '/login' && currentPath !== '/') {
-        console.warn('🔄 Token inválido, limpando dados de autenticação e redirecionando para login.');
+        console.warn('🔄 Token inválido ou expirado. Limpando sessão e redirecionando para login.');
         localStorage.removeItem('user');
         localStorage.removeItem('token');
+        // Força o redirecionamento para a página de login
         window.location.href = '/login';
       }
     }
     
+    // Rejeita a promessa para que os blocos .catch() nos componentes possam lidar com o erro
     return Promise.reject(error);
   }
 );
