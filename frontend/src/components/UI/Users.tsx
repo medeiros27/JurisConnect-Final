@@ -30,34 +30,87 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '../UI/ToastContainer';
 import userService from '../../services/userService';
 
+// Função helper para formatar datas com segurança
+const formatSafeDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return 'Data não disponível';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Data inválida';
+    return format(date, 'dd/MM/yyyy', { locale: ptBR });
+  } catch (error) {
+    return 'Data inválida';
+  }
+};
+
+// Função helper para validar strings
+const safeString = (value: any): string => {
+  if (value === null || value === undefined) return '';
+  return String(value);
+};
+
+// Função helper para validar valores opcionais
+const safeOptionalString = (value: any): string | undefined => {
+  if (value === null || value === undefined || value === '') return undefined;
+  return String(value);
+};
+
+// Interface para tipagem do usuário
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'client' | 'correspondent';
+  status: 'active' | 'pending' | 'inactive';
+  phone?: string;
+  city?: string;
+  state?: string;
+  oab?: string;
+  createdAt?: string;
+}
+
+// Interface para ação de confirmação
+interface ConfirmAction {
+  type: 'delete' | 'approve' | 'reject';
+  user: User;
+  title: string;
+  message: string;
+}
+
 const Users: React.FC = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { users, loading, error, refreshUsers } = useUsers();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{
-    type: 'delete' | 'approve' | 'reject';
-    user: any;
-    title: string;
-    message: string;
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Filtrar usuários
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Filtrar usuários com validação de dados
+  const filteredUsers = React.useMemo(() => {
+    return users.filter(user => {
+      // Validação básica dos dados do usuário
+      if (!user || !user.id) return false;
+      
+      const userName = safeString(user.name);
+      const userEmail = safeString(user.email);
+      const userRole = safeString(user.role);
+      const userStatus = safeString(user.status);
+      
+      const matchesSearch = searchTerm === '' || 
+        userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        userEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesRole = roleFilter === 'all' || userRole === roleFilter;
+      const matchesStatus = statusFilter === 'all' || userStatus === statusFilter;
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, searchTerm, roleFilter, statusFilter]);
 
   // Paginação
   const {
@@ -79,27 +132,30 @@ const Users: React.FC = () => {
     updateItemsPerPage(itemsPerPage);
   }, [itemsPerPage, updateItemsPerPage]);
 
+  // Função para obter badge do role com validação
   const getRoleBadge = (role: string) => {
-    const roleMap = {
-      admin: { variant: 'danger' as const, label: 'Administrador' },
-      client: { variant: 'info' as const, label: 'Cliente' },
-      correspondent: { variant: 'success' as const, label: 'Correspondente' }
+    const roleMap: Record<string, { variant: 'danger' | 'info' | 'success' | 'default'; label: string }> = {
+      admin: { variant: 'danger', label: 'Administrador' },
+      client: { variant: 'info', label: 'Cliente' },
+      correspondent: { variant: 'success', label: 'Correspondente' }
     };
     
-    return roleMap[role as keyof typeof roleMap] || { variant: 'default' as const, label: role };
+    return roleMap[role] || { variant: 'default', label: safeString(role) || 'Desconhecido' };
   };
 
+  // Função para obter badge do status com validação
   const getStatusBadge = (status: string) => {
-    const statusMap = {
-      active: { variant: 'success' as const, label: 'Ativo' },
-      pending: { variant: 'warning' as const, label: 'Pendente' },
-      inactive: { variant: 'danger' as const, label: 'Inativo' }
+    const statusMap: Record<string, { variant: 'success' | 'warning' | 'danger' | 'default'; label: string }> = {
+      active: { variant: 'success', label: 'Ativo' },
+      pending: { variant: 'warning', label: 'Pendente' },
+      inactive: { variant: 'danger', label: 'Inativo' }
     };
     
-    return statusMap[status as keyof typeof statusMap] || { variant: 'default' as const, label: status };
+    return statusMap[status] || { variant: 'default', label: safeString(status) || 'Desconhecido' };
   };
 
-  const handleDeleteUser = async () => {
+  // Função para deletar usuário com tratamento de erros
+  const handleDeleteUser = async (): Promise<void> => {
     if (!confirmAction || confirmAction.type !== 'delete') return;
 
     setIsLoading(true);
@@ -114,25 +170,19 @@ const Users: React.FC = () => {
       setShowConfirmModal(false);
       setConfirmAction(null);
     } catch (error) {
-      if (error instanceof Error) {
-        addToast({
-          type: 'error',
-          title: 'Erro ao excluir',
-          message: error.message
-        });
-      } else {
-        addToast({
-          type: 'error',
-          title: 'Erro ao excluir',
-          message: 'Não foi possível excluir o usuário. Tente novamente.'
-        });
-      }
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      addToast({
+        type: 'error',
+        title: 'Erro ao excluir',
+        message: errorMessage || 'Não foi possível excluir o usuário. Tente novamente.'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleApproveCorrespondent = async () => {
+  // Função para aprovar correspondente com tratamento de erros
+  const handleApproveCorrespondent = async (): Promise<void> => {
     if (!confirmAction || confirmAction.type !== 'approve') return;
 
     setIsLoading(true);
@@ -147,17 +197,19 @@ const Users: React.FC = () => {
       setShowConfirmModal(false);
       setConfirmAction(null);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       addToast({
         type: 'error',
         title: 'Erro ao aprovar',
-        message: 'Não foi possível aprovar o correspondente. Tente novamente.'
+        message: errorMessage || 'Não foi possível aprovar o correspondente. Tente novamente.'
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRejectCorrespondent = async () => {
+  // Função para rejeitar correspondente com tratamento de erros
+  const handleRejectCorrespondent = async (): Promise<void> => {
     if (!confirmAction || confirmAction.type !== 'reject') return;
 
     setIsLoading(true);
@@ -172,62 +224,95 @@ const Users: React.FC = () => {
       setShowConfirmModal(false);
       setConfirmAction(null);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       addToast({
         type: 'error',
         title: 'Erro ao rejeitar',
-        message: 'Não foi possível rejeitar o correspondente. Tente novamente.'
+        message: errorMessage || 'Não foi possível rejeitar o correspondente. Tente novamente.'
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleConfirmAction = async () => {
+  // Função principal para confirmar ações
+  const handleConfirmAction = async (): Promise<void> => {
     if (!confirmAction) return;
 
-    switch (confirmAction.type) {
-      case 'delete':
-        await handleDeleteUser();
-        break;
-      case 'approve':
-        await handleApproveCorrespondent();
-        break;
-      case 'reject':
-        await handleRejectCorrespondent();
-        break;
+    try {
+      switch (confirmAction.type) {
+        case 'delete':
+          await handleDeleteUser();
+          break;
+        case 'approve':
+          await handleApproveCorrespondent();
+          break;
+        case 'reject':
+          await handleRejectCorrespondent();
+          break;
+        default:
+          console.warn('Tipo de ação não reconhecido:', confirmAction.type);
+      }
+    } catch (error) {
+      console.error('Erro ao executar ação:', error);
     }
   };
 
-  const openConfirmModal = (type: 'delete' | 'approve' | 'reject', user: any) => {
-    const actions = {
+  // Função para abrir modal de confirmação
+  const openConfirmModal = (type: 'delete' | 'approve' | 'reject', user: User): void => {
+    const userName = safeString(user.name) || 'Usuário sem nome';
+    
+    const actions: Record<string, { title: string; message: string }> = {
       delete: {
         title: 'Excluir Usuário',
-        message: `Tem certeza que deseja excluir o usuário "${user.name}"? Esta ação não pode ser desfeita.`
+        message: `Tem certeza que deseja excluir o usuário "${userName}"? Esta ação não pode ser desfeita.`
       },
       approve: {
         title: 'Aprovar Correspondente',
-        message: `Tem certeza que deseja aprovar o correspondente "${user.name}"? Ele poderá receber diligências após a aprovação.`
+        message: `Tem certeza que deseja aprovar o correspondente "${userName}"? Ele poderá receber diligências após a aprovação.`
       },
       reject: {
         title: 'Rejeitar Correspondente',
-        message: `Tem certeza que deseja rejeitar o correspondente "${user.name}"? O cadastro será removido do sistema.`
+        message: `Tem certeza que deseja rejeitar o correspondente "${userName}"? O cadastro será removido do sistema.`
       }
     };
+
+    const action = actions[type];
+    if (!action) {
+      console.error('Tipo de ação inválido:', type);
+      return;
+    }
 
     setConfirmAction({
       type,
       user,
-      ...actions[type]
+      ...action
     });
     setShowConfirmModal(true);
   };
 
-  const clearFilters = () => {
+  // Função para limpar filtros
+  const clearFilters = (): void => {
     setSearchTerm('');
     setRoleFilter('all');
     setStatusFilter('all');
   };
 
+  // Função para navegar com segurança
+  const safeNavigate = (path: string): void => {
+    try {
+      navigate(path);
+    } catch (error) {
+      console.error('Erro ao navegar:', error);
+      addToast({
+        type: 'error',
+        title: 'Erro de navegação',
+        message: 'Não foi possível navegar para a página solicitada.'
+      });
+    }
+  };
+
+  // Estados de loading
   if (loading) {
     return (
       <div className="p-6">
@@ -236,12 +321,13 @@ const Users: React.FC = () => {
     );
   }
 
+  // Estados de erro
   if (error) {
     return (
       <div className="p-6">
         <ErrorState 
           title="Erro ao carregar usuários" 
-          message={error} 
+          message={safeString(error)} 
           onRetry={refreshUsers} 
         />
       </div>
@@ -250,17 +336,19 @@ const Users: React.FC = () => {
 
   return (
     <div className="p-6">
+      {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
           <p className="text-gray-600">Gerencie todos os usuários do sistema</p>
         </div>
-        <Button onClick={() => navigate('/users/new')}>
+        <Button onClick={() => safeNavigate('/users/new')}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Usuário
         </Button>
       </div>
 
+      {/* Filtros e Busca */}
       <Card className="mb-6">
         <div className="flex flex-col space-y-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -373,7 +461,7 @@ const Users: React.FC = () => {
             users.length === 0 
               ? {
                   label: "Criar Primeiro Usuário",
-                  onClick: () => navigate('/users/new')
+                  onClick: () => safeNavigate('/users/new')
                 }
               : {
                   label: "Limpar Filtros",
@@ -386,8 +474,19 @@ const Users: React.FC = () => {
         <>
           <div className="grid gap-6 mb-6">
             {paginatedUsers.map((user) => {
-              const role = getRoleBadge(user.role);
-              const status = getStatusBadge(user.status);
+              // Validação dos dados do usuário
+              if (!user || !user.id) {
+                console.warn('Usuário inválido encontrado:', user);
+                return null;
+              }
+
+              const userName = safeString(user.name) || 'Nome não disponível';
+              const userEmail = safeString(user.email) || 'Email não disponível';
+              const userRole = safeString(user.role) || 'client';
+              const userStatus = safeString(user.status) || 'inactive';
+              
+              const role = getRoleBadge(userRole);
+              const status = getStatusBadge(userStatus);
               
               return (
                 <Card key={user.id} className="hover:shadow-md transition-shadow">
@@ -395,13 +494,13 @@ const Users: React.FC = () => {
                     <div className="flex items-start space-x-4">
                       <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
                         <span className="text-white font-semibold text-lg">
-                          {user.name.charAt(0).toUpperCase()}
+                          {userName.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900">{userName}</h3>
                           <Badge variant={role.variant}>{role.label}</Badge>
                           <Badge variant={status.variant}>{status.label}</Badge>
                         </div>
@@ -409,17 +508,17 @@ const Users: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-600">
                           <div className="flex items-center">
                             <Mail className="h-4 w-4 mr-2" />
-                            <span>{user.email}</span>
+                            <span>{userEmail}</span>
                           </div>
                           
-                          {user.phone && (
+                          {safeOptionalString(user.phone) && (
                             <div className="flex items-center">
                               <Phone className="h-4 w-4 mr-2" />
                               <span>{user.phone}</span>
                             </div>
                           )}
                           
-                          {user.city && user.state && (
+                          {safeOptionalString(user.city) && safeOptionalString(user.state) && (
                             <div className="flex items-center">
                               <MapPin className="h-4 w-4 mr-2" />
                               <span>{user.city}, {user.state}</span>
@@ -428,10 +527,10 @@ const Users: React.FC = () => {
                           
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-2" />
-                            <span>Cadastro: {format(new Date(user.createdAt), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                            <span>Cadastro: {formatSafeDate(user.createdAt)}</span>
                           </div>
                           
-                          {user.oab && (
+                          {safeOptionalString(user.oab) && (
                             <div className="flex items-center">
                               <UserCheck className="h-4 w-4 mr-2" />
                               <span>OAB: {user.oab}</span>
@@ -442,15 +541,23 @@ const Users: React.FC = () => {
                     </div>
                     
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => safeNavigate(`/users/${user.id}`)}
+                      >
                         <Eye className="h-4 w-4 mr-1" />
                         Ver
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => safeNavigate(`/users/${user.id}/edit`)}
+                      >
                         <Edit className="h-4 w-4 mr-1" />
                         Editar
                       </Button>
-                      {user.status === 'pending' && user.role === 'correspondent' && (
+                      {userStatus === 'pending' && userRole === 'correspondent' && (
                         <>
                           <Button 
                             variant="primary" 

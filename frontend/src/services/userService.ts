@@ -27,13 +27,31 @@ class UserService {
   /**
    * Busca todos os correspondentes.
    */
-  async getCorrespondents(): Promise<User[]> {
+  async getCorrespondents(state?: string, city?: string): Promise<User[]> {
     try {
-      // A rota deve corresponder à definida no seu backend (userRoutes.ts)
-      const response: ApiResponse = await api.get('/users/correspondents');
+      // Constrói a query string se os parâmetros forem fornecidos
+      const params = new URLSearchParams();
+      if (state) params.append('state', state);
+      if (city) params.append('city', city);
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      
+      const response: ApiResponse = await api.get(`/users/correspondents${queryString}`);
       return response.data.users || [];
     } catch (error) {
       console.error("Erro ao buscar correspondentes:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca correspondentes pendentes de aprovação.
+   */
+  async getPendingCorrespondents(): Promise<User[]> {
+    try {
+      const response: ApiResponse = await api.get('/users/correspondents/pending');
+      return response.data.users || [];
+    } catch (error) {
+      console.error("Erro ao buscar correspondentes pendentes:", error);
       return [];
     }
   }
@@ -111,5 +129,6 @@ class UserService {
   }
 }
 
-// CORREÇÃO: Exporta a CLASSE, e não a instância, para manter o padrão Singleton.
-export default UserService;
+// ✅ CORREÇÃO: Exporta a INSTÂNCIA, não a classe
+const userService = UserService.getInstance();
+export default userService;

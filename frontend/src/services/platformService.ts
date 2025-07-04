@@ -1,6 +1,17 @@
 import api from './api';
+import { User } from '../types';
 
-// Interfaces para tipagem
+// Interface para a resposta da API de usuários
+interface ApiResponse {
+  success: boolean;
+  data: {
+    users?: User[];
+    user?: User;
+  };
+  message?: string;
+}
+
+// Interfaces para tipagem (mantidas do arquivo original)
 interface PlatformStats {
   totalDiligences: number;
   activeDiligences: number;
@@ -46,6 +57,80 @@ interface RecentDiligence {
 }
 
 class PlatformService {
+  // ========== MÉTODOS PARA USUÁRIOS (ADICIONADOS) ==========
+  
+  /**
+   * Busca todos os clientes da plataforma.
+   */
+  async getClients(): Promise<User[]> {
+    try {
+      console.log('🔍 Carregando clientes...');
+      const response: ApiResponse = await api.get('/users/clients');
+      return response.data.users || [];
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca todos os correspondentes da plataforma.
+   */
+  async getCorrespondents(): Promise<User[]> {
+    try {
+      console.log('🔍 Carregando correspondentes...');
+      const response: ApiResponse = await api.get('/users/correspondents');
+      return response.data.users || [];
+    } catch (error) {
+      console.error("Erro ao buscar correspondentes:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca correspondentes pendentes de aprovação.
+   */
+  async getPendingCorrespondents(): Promise<User[]> {
+    try {
+      console.log('🔍 Carregando correspondentes pendentes...');
+      const response: ApiResponse = await api.get('/users/correspondents/pending');
+      return response.data.users || [];
+    } catch (error) {
+      console.error("Erro ao buscar correspondentes pendentes:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Aprova um correspondente.
+   */
+  async approveCorrespondent(id: string): Promise<User> {
+    try {
+      console.log(`✅ Aprovando correspondente ${id}...`);
+      const response: ApiResponse = await api.patch(`/users/correspondents/${id}/approve`);
+      return response.data.user as User;
+    } catch (error) {
+      console.error(`Erro ao aprovar correspondente ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Rejeita um correspondente.
+   */
+  async rejectCorrespondent(id: string): Promise<User> {
+    try {
+      console.log(`❌ Rejeitando correspondente ${id}...`);
+      const response: ApiResponse = await api.patch(`/users/correspondents/${id}/reject`);
+      return response.data.user as User;
+    } catch (error) {
+      console.error(`Erro ao rejeitar correspondente ${id}:`, error);
+      throw error;
+    }
+  }
+
+  // ========== MÉTODOS ORIGINAIS DE ANALYTICS/STATS ==========
+
   // Função auxiliar para garantir que um valor seja um número válido
   private safeNumber(value: any, defaultValue: number = 0): number {
     if (value === undefined || value === null || isNaN(Number(value))) {
@@ -360,7 +445,6 @@ class PlatformService {
   }
 }
 
-// Exportar instância única
+// ✅ Exporta a instância, não a classe
 const platformService = new PlatformService();
 export default platformService;
-
